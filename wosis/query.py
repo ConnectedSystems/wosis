@@ -6,6 +6,9 @@ import pickle
 import time
 import warnings
 
+from suds import WebFault
+
+
 def build_query(inclusive, exclusive, subject_area):
     """Generate a WoS advanced query string
 
@@ -41,6 +44,18 @@ def build_query(inclusive, exclusive, subject_area):
 
 
 def grab_records(client, query, batch_size=100, verbose=False):
+    """
+    Parameters
+    ==========
+    * client : WoS Client object
+    * query : str, Web of Science Advanced Search query string
+    * batch_size : int, number of records to request, between 1 and 100 inclusive.
+    * verbose : bool, print out more information.
+
+    Returns
+    ==========
+    * tuple[list], list of parsed XML objects as string, list of XML
+    """
     # Cache results so as to not spam the Clarivate servers
     md5_hash = store.create_query_hash(query)
     cache_file = f'{md5_hash}.dmp'
@@ -50,7 +65,12 @@ def grab_records(client, query, batch_size=100, verbose=False):
     if not os.path.isfile(cache_file):
         recs = []
 
-        probe = client.search(query, count=1)
+        try:
+            probe = client.search(query, count=1)
+        except WebFault as e:
+            _wait_for_server()
+            probe = client.search(query, count=1)
+        # End try
         q_id = probe.queryId
         num_matches = probe.recordsFound
         print("Found {} records".format(num_matches))
@@ -87,7 +107,18 @@ def grab_records(client, query, batch_size=100, verbose=False):
     return recs, xml_list
 # End grab_records()
 
+
 def _extract_ref(c_rec, ref_order):
+    """
+    Parameters
+    ==========
+    * c_rec : WoS Client citation reference object
+    * ref_order : list, of reference details in the desired order
+
+    Returns
+    ==========
+    str, combined reference list in RIS format
+    """
     cr = []
     for detail in ref_order:
         if detail in c_rec.__keylist__:
@@ -97,12 +128,28 @@ def _extract_ref(c_rec, ref_order):
 
 
 def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, get_all_refs=False):
+    """
+    Parameters
+    ==========
+    * client : WoS Client
+    * query_str : str, WoS advanced query string
+    * recs : list, of records
+    * batch_size : int, number of records to download each time. Has to be between 1 and 100 inclusive.
+    * skip_refs : bool, if False gets references used in each identified publication
+    * get_all_refs : bool, if True attempts to get data for all references used in each publication.
+                     Otherwise gets the first `batch_size` references.
+
+    Returns
+    ==========
+    * list, of RIS records
+    """
     os.makedirs('tmp', exist_ok=True)
     md5_hash = store.create_query_hash(query_str)
     cache_file = f'{md5_hash}_ris.dmp'
     cache_file = os.path.join('tmp', cache_file)
 
     if os.path.isfile(cache_file):
+        warnings.warn("Using cached results...")
         with open(cache_file, 'rb') as infile:
             ris_records = pickle.load(infile)
         # End with
@@ -112,9 +159,10 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, g
 
     ris_records = wos_parser.rec_info_to_ris(recs)
     if not skip_refs:
+        warnings.warn("Getting referenced works...")
         ris_records = _get_referenced_works(client, ris_records, get_all_refs=get_all_refs)
     else:
-        print("Not getting cited records")
+        warnings.warn("Not getting referenced works")
 
     with open(cache_file, 'wb') as outfile:
         pickle.dump(ris_records, outfile, pickle.HIGHEST_PROTOCOL)
@@ -139,17 +187,17 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
     # Get cited articles for each record
     ref_order = ['citedAuthor', 'year', 'citedTitle', 'citedWork', 'volume', 'page', 'docid']
 
-    # NOTE: Where I call sleep is an attempt to avoid overloading the clarivate servers
+    # NOTE: On WebFault exception, we force the program to pause for some time
+    # in an attempt to avoid overloading the clarivate servers
     for rec in ris_records:
         try:
             cite_recs = client.citedReferences(rec['UT'])
-        except:
-            time.sleep(2)
+        except WebFault as e:
+            _handle_webfault(client, e)
             cite_recs = client.citedReferences(rec['UT'])
         # End try
 
         rec['CR'] = []
-
         num_refs = cite_recs.recordsFound
         if num_refs == 0:
             continue
@@ -162,23 +210,63 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
             q_id = cite_recs.queryId
             warnings.warn("A reference had more than {} citations. This can get quite large...".format(batch_size))
 
-            # num_matches - `n` as the last loop gets the last `n` records
-            # (remember range is end exclusive, hence the -1)
-            leap = batch_size - 1
             for batch_start in range(batch_size+1, num_refs, batch_size):
-                resp = client.citedReferencesRetrieve(q_id, batch_size, batch_start)
+                try:
+                    resp = client.citedReferencesRetrieve(q_id, batch_size, batch_start)
+                except WebFault as e:
+                    _handle_webfault(client, e)
+                    resp = client.citedReferencesRetrieve(q_id, batch_size, batch_start)
+                # End try
+
                 for c_ref in resp:
                     rec['CR'].append(_extract_ref(c_ref, ref_order))
                 # End for
             # End for
-        else:
+        elif (num_refs > batch_size):
             warnings.warn("A reference had more than {0} citations. Only retrieved the first {0}.".format(batch_size))
         # End if
-        time.sleep(0.1)
-    # End if
-    time.sleep(0.1)  # attempting to avoid overloading clarivate servers
     # End for
 
     print("Finished")
     return ris_records
 # End _get_referenced_works()
+
+
+def _handle_webfault(client, ex):
+    """
+    Parameters
+    ==========
+    client : WoS Client
+    ex : WebFault Exception object
+    """
+    msg = str(ex)
+
+    if "Server.IDLimit" in msg:
+        # request threshold exceeded, so reconnect
+        client.close()
+        client.connect()
+        _wait_for_server(2)
+        return
+    # End if
+
+    period_msg = "period length is "
+    submsg_len = len(period_msg)
+    pos = msg.find(period_msg)
+    if pos == -1:
+        raise RuntimeError("Could not handle WebFault. Error message: {}".format(msg))
+    sub_start = pos+submsg_len
+    secs_to_wait = int(msg[sub_start:sub_start+3].split(" ")[0])
+    _wait_for_server(secs_to_wait)
+# End _handle_webfault()
+
+
+def _wait_for_server(wait_time=150, verbose=False):
+    """
+    Parameters
+    ==========
+    * wait_time : int, number of seconds to wait before attempting HTTP request
+    """
+    if verbose:
+        print(f"Waiting {wait_time} second(s) for server to be available again...")
+    time.sleep(wait_time)
+# End _wait_for_server()
