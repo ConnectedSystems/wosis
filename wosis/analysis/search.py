@@ -38,3 +38,35 @@ def search_records(records, keywords):
 
     return matches
 # End search_records()
+
+
+def preview_matches(search_results, num=5, limit_abstract=None):
+    """
+    Parameters
+    ==========
+    * search_results : iterable, of RIS records
+    * num : int, number of records to preview
+    * limit_abstract : int, Number of characters to display in the abstract. Defaults to None.
+    """
+    count = 0
+    for rec in search_results:
+        title = rec.title
+        year = rec.get('PY', None)
+        authors = rec.get('AU', None)
+        if authors:
+            authors = "; ".join(authors)
+        year = '- No Publication Year -' if not year else year
+
+        kwds = ' '.join(['Keywords:'] + rec.get('DE') + rec.get('ID'))
+        journal = rec.get('SO')
+
+        ab = rec.get('AB', None)
+
+        if limit_abstract:
+            ab = ab[0:limit_abstract]
+
+        print(f"{title}\n    {authors} ({year})\n    {journal}\n{kwds}\n\n{ab}\n")
+        print('=========================================')
+        count += 1
+        if count > num:
+            break
