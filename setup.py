@@ -24,5 +24,5 @@ if __name__ == "__main__":
             'python-louvain',
             'nltk'
         ],
-        dependency_links=['https://github.com/titipata/wos_parser/tarball/master#egg=wos_parser-0'],
+        dependency_links=['pip install git+https://github.com/titipata/wos_parser.git'],
     )
