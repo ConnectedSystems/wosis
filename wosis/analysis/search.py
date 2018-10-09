@@ -1,8 +1,8 @@
 import metaknowledge as mk
 from . import similarity as sims
+import itertools as it
 
-
-def search_records(records, keywords):
+def search_records(records, keywords, threshold=60.0):
     matches = mk.RecordCollection()
     for record in records:
         kwds = record.get('keywords', None)
@@ -17,7 +17,7 @@ def search_records(records, keywords):
                 tmp = [kw.lower() for kw in kwds]
                 combinations = [(a, b) for a in keywords for b in tmp]
                 for kwi, kw in combinations:
-                    if sims.jaccard_similarity(kwi, kw) > 60:
+                    if sims.string_match(kwi, kw) > threshold:
                         # print("Jaccard match found: {} | {}".format(kwi, kw))
                         if record not in matches:
                             matches.add(record)
@@ -38,6 +38,48 @@ def search_records(records, keywords):
 
     return matches
 # End search_records()
+
+
+def keyword_matches(records, keywords, threshold=60.0):
+    """
+    Get records for each individiual keyword of interest
+
+    Parameters
+    ==========
+    * records : iterable, of RIS records
+    * keywords : list[str], of keywords
+
+    Returns
+    ==========
+    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+    """
+    matching_records = {}
+    summary = {}
+    for kw in keywords:
+        matching_records[kw] = search_records(records, set([kw, ]), threshold)
+        summary[kw] = len(matching_records[kw])
+    # End for
+
+    return matching_records, summary
+# End keyword_matches()
+
+
+def find_pubs_by_authors(records, author_list, threshold=60.0):
+    matching_pubs = {au_i: mk.RecordCollection() for au_i in author_list}
+    for rec in records:
+        for au, au_i in it.product(rec.authors, author_list):
+            # if au_i.split(' ')[1] in au:
+            #     print(au, "|", au_i, ":", sims.string_match(au, au_i))
+
+            if sims.string_match(au, au_i) > threshold:
+                matching_pubs[au_i].add(rec)
+            # End if
+        # End for
+        # break
+    # End for
+
+    return matching_pubs
+# End find_pubs_by_authors()
 
 
 def preview_matches(search_results, num=5, limit_abstract=None):
@@ -70,3 +112,5 @@ def preview_matches(search_results, num=5, limit_abstract=None):
         count += 1
         if count > num:
             break
+    # End for
+# End preview_matches()
