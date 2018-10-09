@@ -1,5 +1,7 @@
-from nltk import pos_tag, word_tokenize
+from nltk import pos_tag, word_tokenize, edit_distance
 from nltk.corpus import wordnet as wn
+
+from fuzzywuzzy import fuzz
 
 
 def penn_to_wn(tag):
@@ -75,9 +77,17 @@ def sentence_similarity(sentence1, sentence2):
 def jaccard_similarity(sentence1, sentence2):
     """
     Compute the similarity of lemmatized sentences using jaccard similarity scores.
+    WARNING: Do not attempt to use this to compare single words.
     Example taken from: https://bommaritollc.com/2014/06/30/advanced-approximate-sentence-matching-python/
 
-    :returns: float, score out of 100.0
+    Parameters
+    ==========
+    * sentence1 : str
+    * sentence2 : str
+
+    Returns
+    ========
+    * float, score out of 100.0
     """
     sen1 = sentence1.split()
     sen2 = sentence2.split()
@@ -88,3 +98,21 @@ def jaccard_similarity(sentence1, sentence2):
         score = len(set(sen1).intersection(sen2)) / denom
 
     return score * 100
+# End jaccard_similarity()
+
+
+def string_match(word1, word2):
+    """
+    Gives a score indicating how well two strings match.
+
+    Parameters
+    ==========
+    * word1 : str
+    * word2 : str
+
+    Returns
+    ========
+    * float, score between 0 and 100 indicating similarity (100 is near-exact match)
+    """
+    return fuzz.token_sort_ratio(word1, word2)
+# End string_match()

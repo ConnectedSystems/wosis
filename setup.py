@@ -22,7 +22,8 @@ if __name__ == "__main__":
             'pandas',
             'networkx',
             'python-louvain',
-            'nltk'
+            'nltk',
+            'fuzzywuzzy'
         ],
         dependency_links=['pip install git+https://github.com/titipata/wos_parser.git'],
     )
