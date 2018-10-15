@@ -65,6 +65,67 @@ def keyword_matches(records, keywords, threshold=60.0):
 # End keyword_matches()
 
 
+def preview_matches_by_keyword(match_records, specific_keyword=None):
+    """
+    Parameters
+    ==========
+    * match_records : dict, records sorted by matching keywords.
+    * keywords : list, of keywords
+
+    See Also
+    ==========
+    * keyword_matches()
+    """
+    if specific_keyword:
+        tmp = {specific_keyword: match_records[specific_keyword]}
+    else:
+        tmp = match_records
+    # End if
+
+    for kw_name in match_records:
+        if len(match_records[kw_name]) > 0:
+            print('Keyword:' , kw_name)
+            for rec in match_records[kw_name]:
+                print('  Title:', rec.get('TI'))
+                print('  Authors:', '; '.join(rec.get('AU')))
+                print('  Journal:', rec.get('SO').title())
+                print('  Year:', rec.get('PY'))
+                print('  -----------------------------------------------')
+            print('===================================================')
+        # End if
+    # End for
+
+# End preview_matches_by_keyword()
+
+
+def get_unique_kw_titles(match_records):
+    """Get unique titles from a record list.
+
+    Parameters
+    ==========
+    * match_records : dict, records sorted by matching keywords.
+    * keywords : list, of keywords
+
+    Returns
+    ==========
+    set of unique elements of manuscript titles
+
+    See Also
+    ==========
+    * keyword_matches()
+    """
+    titles = set()
+    for kw in match_records:
+        for rec in match_records[kw]:
+            titles.update(rec.get('TI'))
+        # End for
+    # End for
+
+    return titles
+# End get_unique_kw_titles()
+
+
+
 def find_pubs_by_authors(records, author_list, threshold=60.0):
     matching_pubs = {au_i: mk.RecordCollection() for au_i in author_list}
     for rec in records:
