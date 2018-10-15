@@ -18,7 +18,6 @@ def search_records(records, keywords, threshold=60.0):
                 combinations = [(a, b) for a in keywords for b in tmp]
                 for kwi, kw in combinations:
                     if sims.string_match(kwi, kw) > threshold:
-                        # print("Jaccard match found: {} | {}".format(kwi, kw))
                         if record not in matches:
                             matches.add(record)
                     # End if
@@ -35,6 +34,8 @@ def search_records(records, keywords, threshold=60.0):
                 # End if
         # End if
     # End for
+
+    matches.name = str(len(matches))
 
     return matches
 # End search_records()
@@ -99,7 +100,8 @@ def preview_matches(search_results, num=5, limit_abstract=None):
             authors = "; ".join(authors)
         year = '- No Publication Year -' if not year else year
 
-        kwds = ' '.join(['Keywords:'] + rec.get('DE') + rec.get('ID'))
+        tmp = rec.get('DE') + rec.get('ID')
+        kwds = '; '.join([kw.strip() for kw in tmp if kw.strip() != ''])
         journal = rec.get('SO')
 
         ab = rec.get('AB', None)
@@ -107,7 +109,7 @@ def preview_matches(search_results, num=5, limit_abstract=None):
         if limit_abstract:
             ab = ab[0:limit_abstract]
 
-        print(f"{title}\n    {authors} ({year})\n    {journal}\n{kwds}\n\n{ab}\n")
+        print(f"{title}\n    {authors} ({year})\n    {journal}\nKeywords: {kwds}\n\n{ab}\n")
         print('=========================================')
         count += 1
         if count > num:
