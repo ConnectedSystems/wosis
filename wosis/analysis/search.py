@@ -13,7 +13,6 @@ def search_records(records, keywords, threshold=60.0):
             if len(subset) > 0:
                 matches.add(record)
             else:
-                # attempt to match on jaccard similarity
                 tmp = [kw.lower() for kw in kwds]
                 combinations = [(a, b) for a in keywords for b in tmp]
                 for kwi, kw in combinations:
@@ -117,7 +116,7 @@ def get_unique_kw_titles(match_records):
     titles = set()
     for kw in match_records:
         for rec in match_records[kw]:
-            titles.update(rec.get('TI'))
+            titles.update([rec.get('TI')])
         # End for
     # End for
 
