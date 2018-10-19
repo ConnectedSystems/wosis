@@ -8,7 +8,13 @@ from .search import get_unique_kw_titles
 
 
 def plot_saver(func):
-    """Decorator to enable all plotting functions to save figures"""
+    """Decorator to enable all plotting functions to save figures.
+    Figures are saved in `png` format at 300 dpi resolution.
+
+    Added Parameter
+    ================
+    * save_plot_fn : str, indicate path to save figure
+    """
 
     def wrapper(*args, **kwargs):
         save_plot_fn = kwargs.pop('save_plot_fn', None)
@@ -102,7 +108,7 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
     See Also
     ==========
     * wosis.analysis.search.keyword_matches()
-    * get_unique_kw_titles
+    * wosis.analysis.search.get_unique_kw_titles()
 
     Returns
     ==========
