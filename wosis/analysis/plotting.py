@@ -18,14 +18,14 @@ def plot_saver(func):
 
     def wrapper(*args, **kwargs):
         save_plot_fn = kwargs.pop('save_plot_fn', None)
-        plot = func(*args, **kwargs)
+        fig = func(*args, **kwargs)
 
         if save_plot_fn:
             if save_plot_fn.endswith('.png'):
                 save_plot_fn = save_plot_fn.strip('.png')
 
             plt.tight_layout()
-            plot.savefig(save_plot_fn+'.png', format='png', dpi=300)
+            fig.savefig(save_plot_fn+'.png', format='png', dpi=300)
         # End if
     # End wrapper()
 
