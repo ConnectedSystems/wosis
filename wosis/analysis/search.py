@@ -1,7 +1,6 @@
 import metaknowledge as mk
 from . import similarity as sims
 import itertools as it
-import warnings
 
 def search_records(records, keywords, threshold=60.0):
     matches = mk.RecordCollection()
@@ -143,7 +142,6 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
     ==========
     * keyword_matches()
     """
-    warnings.warn("Remember to double check results!")
     matching_pubs = {au_i: mk.RecordCollection() for au_i in author_list}
     for rec in records:
         for au, au_i in it.product(rec.authors, author_list):
