@@ -1,6 +1,7 @@
 import os
 import wosis.store as store
 import wos_parser
+import wos
 import pickle
 
 import time
@@ -43,6 +44,32 @@ def build_query(inclusive, exclusive, subject_area):
 # End build_query()
 
 
+def query(queries, overwrite):
+    hash_to_query = {}
+    for query_str in queries:
+        with wos.WosClient(user=wos_config['user'], password=wos_config['password']) as client:
+            recs, xml_list = grab_records(client, query_str, verbose=False)
+            recs = grab_cited_works(client, query_str, recs, skip_refs=False, get_all_refs=True)
+        # End with
+
+        num_ris_records = len(recs)
+        print(f"Got {num_ris_records} records")
+
+        md5_hash = store.create_query_hash(query_str)
+        hash_to_query.update({md5_hash: query_str})
+        prev_q_exists = os.path.isfile(f'{md5_hash}.txt')
+        if (prev_q_exists and overwrite) or not prev_q_exists:
+            ris_text = wos_parser.to_ris_text(recs)
+            wos_parser.write_file(ris_text, f'{md5_hash}', overwrite=overwrite)
+        else:
+            continue
+        # End if
+    # End for
+
+    return hash_to_query
+# End query()
+
+
 def grab_records(client, query, batch_size=100, verbose=False):
     """
     Parameters
@@ -68,9 +95,10 @@ def grab_records(client, query, batch_size=100, verbose=False):
         try:
             probe = client.search(query, count=1)
         except WebFault as e:
-            _wait_for_server()
+            _handle_webfault(client, e)
             probe = client.search(query, count=1)
         # End try
+
         q_id = probe.queryId
         num_matches = probe.recordsFound
         print("Found {} records".format(num_matches))
@@ -85,7 +113,14 @@ def grab_records(client, query, batch_size=100, verbose=False):
         for batch_start in range(2, num_matches, batch_size):
             if verbose:
                 print(f'Getting {batch_start} to {batch_start + batch_size - 1}')
-            resp = client.retrieve(q_id, batch_size, batch_start)
+
+            try:
+                resp = client.retrieve(q_id, batch_size, batch_start)
+            except WebFault as e:
+                _handle_webfault(client, e)
+                resp = client.retrieve(q_id, batch_size, batch_start)
+            # End try
+
             recs.extend(wos_parser.read_xml_string(resp.records))
             xml_list.append(resp.records)
         # End for
@@ -232,7 +267,7 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 # End _get_referenced_works()
 
 
-def _handle_webfault(client, ex):
+def _handle_webfault(client, ex, min_period=3):
     """
     Parameters
     ==========
@@ -243,9 +278,10 @@ def _handle_webfault(client, ex):
 
     if "Server.IDLimit" in msg:
         # request threshold exceeded, so reconnect
+        print("Server Error Msg:", msg)
         client.close()
-        client.connect()
         _wait_for_server(2)
+        client.connect()
         return
     # End if
 
@@ -255,7 +291,7 @@ def _handle_webfault(client, ex):
     if pos == -1:
         raise RuntimeError("Could not handle WebFault. Error message: {}".format(msg))
     sub_start = pos+submsg_len
-    secs_to_wait = int(msg[sub_start:sub_start+3].split(" ")[0])
+    secs_to_wait = max(min_period, int(msg[sub_start:sub_start+3].split(" ")[0]))
     _wait_for_server(secs_to_wait)
 # End _handle_webfault()
 
@@ -265,6 +301,7 @@ def _wait_for_server(wait_time=150, verbose=False):
     Parameters
     ==========
     * wait_time : int, number of seconds to wait before attempting HTTP request
+    * verbose : bool, print message (default: False)
     """
     if verbose:
         print(f"Waiting {wait_time} second(s) for server to be available again...")
