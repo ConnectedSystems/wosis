@@ -1,6 +1,7 @@
 import metaknowledge as mk
 from . import similarity as sims
 import itertools as it
+import warnings
 
 def search_records(records, keywords, threshold=60.0):
     matches = mk.RecordCollection()
@@ -124,20 +125,42 @@ def get_unique_kw_titles(match_records):
 # End get_unique_kw_titles()
 
 
-
 def find_pubs_by_authors(records, author_list, threshold=60.0):
+    """Get publications by specific authors.
+
+    Parameters
+    ==========
+    * records : dict, records sorted by matching keywords.
+    * author_list : list, of authors
+    * threshold : float, similarity of author names have to be above this threshold to be included
+                  0 to 100, where 100 is exact match.
+
+    Returns
+    ==========
+    Metaknowledge Record, set of unique elements of manuscript titles
+
+    See Also
+    ==========
+    * keyword_matches()
+    """
+    warnings.warn("Remember to double check results!")
     matching_pubs = {au_i: mk.RecordCollection() for au_i in author_list}
     for rec in records:
         for au, au_i in it.product(rec.authors, author_list):
-            # if au_i.split(' ')[1] in au:
-            #     print(au, "|", au_i, ":", sims.string_match(au, au_i))
-
-            if sims.string_match(au, au_i) > threshold:
-                matching_pubs[au_i].add(rec)
+            # Get first portion of name string
+            tmp = au_i.split(' ')[0].split(',')[0].lower()
+            inside = tmp in au.lower()
+            if inside:
+                similar = sims.string_match(au, au_i) > threshold
+                if similar:
+                    matching_pubs[au_i].add(rec)
+                # End if
             # End if
         # End for
-        # break
     # End for
+
+    for k, rec in matching_pubs.items():
+        rec.name = len(rec)
 
     return matching_pubs
 # End find_pubs_by_authors()

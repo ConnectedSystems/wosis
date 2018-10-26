@@ -74,33 +74,6 @@ def sentence_similarity(sentence1, sentence2):
 # End sentence_similarity()
 
 
-def jaccard_similarity(sentence1, sentence2):
-    """
-    Compute the similarity of lemmatized sentences using jaccard similarity scores.
-    WARNING: Do not attempt to use this to compare single words.
-    Example taken from: https://bommaritollc.com/2014/06/30/advanced-approximate-sentence-matching-python/
-
-    Parameters
-    ==========
-    * sentence1 : str
-    * sentence2 : str
-
-    Returns
-    ========
-    * float, score out of 100.0
-    """
-    sen1 = sentence1.split()
-    sen2 = sentence2.split()
-
-    score = 0.0
-    denom = float(len(set(sen1).union(sen2)))
-    if denom > 0:
-        score = len(set(sen1).intersection(sen2)) / denom
-
-    return score * 100
-# End jaccard_similarity()
-
-
 def string_match(word1, word2):
     """
     Gives a score indicating how well two strings match.
