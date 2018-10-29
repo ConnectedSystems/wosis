@@ -44,10 +44,10 @@ def build_query(inclusive, exclusive, subject_area):
 # End build_query()
 
 
-def query(queries, overwrite):
+def query(queries, overwrite, config):
     hash_to_query = {}
     for query_str in queries:
-        with wos.WosClient(user=wos_config['user'], password=wos_config['password']) as client:
+        with wos.WosClient(user=config['user'], password=config['password']) as client:
             recs, xml_list = grab_records(client, query_str, verbose=False)
             recs = grab_cited_works(client, query_str, recs, skip_refs=False, get_all_refs=True)
         # End with
@@ -57,10 +57,10 @@ def query(queries, overwrite):
 
         md5_hash = store.create_query_hash(query_str)
         hash_to_query.update({md5_hash: query_str})
-        prev_q_exists = os.path.isfile(f'{md5_hash}.txt')
+        prev_q_exists = os.path.isfile(f'tmp/{md5_hash}.txt')
         if (prev_q_exists and overwrite) or not prev_q_exists:
             ris_text = wos_parser.to_ris_text(recs)
-            wos_parser.write_file(ris_text, f'{md5_hash}', overwrite=overwrite)
+            wos_parser.write_file(ris_text, f'tmp/{md5_hash}', overwrite=overwrite)
         else:
             continue
         # End if
