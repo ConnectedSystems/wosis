@@ -5,7 +5,7 @@ Wosis - a python package developed to support analysis of Web of Science data fr
 The scope of this package is quite narrow and is currently intended for limited use.
 
 Examples of its use can be found by looking at the notebooks within the
-(https://github.com/ConnectedSystems/sd-prac-bibanalysis)[sd-prac-bibanalysis] repository.
+[sd-prac-bibanalysis](https://github.com/ConnectedSystems/sd-prac-bibanalysis) repository.
 
 Key dependencies include:
 
