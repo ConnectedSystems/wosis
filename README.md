@@ -7,9 +7,9 @@ Examples of its use can be found by looking at the notebooks within the
 
 Key dependencies include:
 
-* WOS Client, a SOAP-based client for Web of Science, developed by E. Bacis (@enricobacis)[https://github.com/enricobacis]
-* wos_parser, a parser for Web of Science XML data, developed by T. Achakulvisut (@titipata)[https://github.com/titipata]
-* Metaknowledge, a Python library for bibliometric research, developed at (Networks Lab)[https://github.com/networks-lab/metaknowledge]
+* WOS Client, a SOAP-based client for Web of Science, developed by E. Bacis [@enricobacis](https://github.com/enricobacis)
+* wos_parser, a parser for Web of Science XML data, developed by T. Achakulvisut [@titipata](https://github.com/titipata)
+* Metaknowledge, a Python library for bibliometric research, developed at [Networks Lab](https://github.com/networks-lab/metaknowledge)
 
 For the moment it is probably best to install by:
 
