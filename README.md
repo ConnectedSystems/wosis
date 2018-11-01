@@ -1,5 +1,7 @@
 Wosis - a python package developed to support analysis of Web of Science data from querying to visualization.
 
+[![DOI](https://zenodo.org/badge/155658135.svg)](https://zenodo.org/badge/latestdoi/155658135)
+
 The scope of this package is quite narrow and is currently intended for limited use.
 
 Examples of its use can be found by looking at the notebooks within the
