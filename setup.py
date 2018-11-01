@@ -4,7 +4,7 @@ from setuptools import setup
 if __name__ == "__main__":
     setup(
         name='Wosis',
-        version='0.1.dev0',
+        version='0.1.1',
         description='Python package that acts as an bridging interface between WoS Client, wos_parser, and Metaknowledge',
         long_description=open('README.md').read(),
         url='',
