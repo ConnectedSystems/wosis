@@ -136,6 +136,15 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
 # End plot_pub_per_kw()
 
 
+def _prep_journal_records(search_results):
+    journals = pd.DataFrame(search_results.forNLP(extraColumns=['SO']))  # SO is the field code for journal name
+
+    # Some journal names have issue name in the title so remove these to allow better grouping
+    journals.loc[:, 'SO'] = [x[0] for x in journals.loc[:, 'SO'].str.split('-')]
+
+    return journals
+# End _prep_journal_records()
+
 @plot_saver
 def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=True):
     """Plot horizontal bar plot of publications for each journal in descending order.
@@ -152,11 +161,8 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=
     * matplotlib figure object
 
     """
-    journals = pd.DataFrame(search_results.forNLP(extraColumns=['SO']))  # SO is the field code for journal name
-
-    # Some journal names have issue name in the title so remove these to allow better grouping
-    journals.loc[:, 'SO'] = [x[0] for x in journals.loc[:, 'SO'].str.split('-')]
-
+    # SO is the field code for journal name
+    journals = _prep_journal_records(search_results)
     pubs_by_journal = journals.groupby(('SO')).count()
 
     # rename column to 'count'
@@ -182,3 +188,40 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=
 
     return ax.get_figure()
 # End plot_pubs_per_journal()
+
+
+@plot_saver
+def plot_pubs_across_time(search_results, top_n=10):
+    """Plot publications across time by journal.
+
+    Parameters
+    ==========
+    * search_results : MetaKnowledge RecordCollection, of search results
+    * top_n : int, number of journals to display (default: 10)
+
+    Returns
+    ==========
+    * matplotlib figure object
+    """
+    journals = _prep_journal_records(search_results)
+
+    top_n_journals = journals.groupby(by=['SO']).count().sort_values('id', ascending=False).head(top_n)
+
+    pubs_by_journal_year = journals.groupby(by=['SO', 'year'])
+    pubs_for_journals = pubs_by_journal_year.count().sort_values('id', ascending=False).loc[top_n_journals.index, 'id']
+    pubs_for_journals = pubs_for_journals.to_frame()
+    pubs_for_journals.columns = ['Num. Publications']
+    pubs_for_journals.index.name = 'Journal'
+
+    pubs_across_time = pubs_for_journals.loc[:, 'Num. Publications'].unstack()
+    pubs_across_time = pubs_across_time.fillna(0.0).transpose()
+    pubs_across_time = pubs_across_time.sort_index()
+
+    axes = pubs_across_time.plot(subplots=True, figsize=(6,8), layout=(10,1), sharey=True, legend=False)
+
+    # Add legends (right hand side, outside of figure)
+    [ax[0].legend([so], fontsize=10, loc='center left', bbox_to_anchor=(1, 0.5))
+     for ax, so in zip(axes, pubs_across_time.columns)]
+
+    return axes[0][0].get_figure()
+# End plot_pubs_across_time()
