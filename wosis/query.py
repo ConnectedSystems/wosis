@@ -6,9 +6,28 @@ import pickle
 
 import time
 import warnings
+import yaml
 
 from suds import WebFault
 
+
+def load_config(config_file):
+    """Load a YAML-based configuration file.
+
+    Parameters
+    ==========
+    * config_file : str, path to configuration file.
+
+    Returns
+    ==========
+    * wos_config : dict, of 'user' and 'password' key-values
+    """
+    with open("config.yml") as config:
+        wos_config = yaml.load(config)
+        wos_config = wos_config['wos']
+
+    return wos_config
+# End load_config()
 
 def build_query(inclusive, exclusive, subject_area):
     """Generate a WoS advanced query string
