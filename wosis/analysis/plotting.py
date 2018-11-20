@@ -83,12 +83,26 @@ def plot_kw_trend(search_results, title=None):
     ax1.set_xlabel("Year")
     ax1.set_ylabel("Average Num. Keywords");
 
+    tick_threshold = 11  # Show every second year if number of years is above this
+    if len(avg_kw_per_pub.index) > tick_threshold:
+        ax1.set_xticks([i for i in range(0, len(avg_kw_per_pub.index), 2)])
+        ax1.set_xticklabels([i.year for i in avg_kw_per_pub.index[::2]])
+
     log_form = True if max(pub_data) > 100 else False  # use log scale if large values found
 
     ax2.yaxis.set_major_locator(MaxNLocator(integer=True))  # force y-axis to use integer values
     num_pubs.plot(kind='bar', ax=ax2, rot=rot, logy=log_form, legend=False)
+
+    if len(num_pubs.index) > tick_threshold:
+        ax2.set_xticks([i for i in range(0, len(num_pubs.index), 2)])
+        ax2.set_xticklabels([i.year for i in num_pubs.index[::2]])
+
     ax2.set_xlabel("Year")
-    ax2.set_ylabel("Num. Publications")
+    ax_label = "Num. Publications"
+    if log_form:
+        ax_label += "\n(log scale)"
+
+    ax2.set_ylabel(ax_label)
 
     return fig
 # End plot_kw_trend()
