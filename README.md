@@ -27,7 +27,7 @@ Alternatively, via `pip`
 $ pip install git+https://github.com/ConnectedSystems/wosis.git@master
 ```
 
-# Quick Start
+# Getting Started
 
 You will need access to the Premium API for Clarivate's Web of Science. This is given as a username and password.
 Create a `.yml` file with these details in the following format:
@@ -82,3 +82,5 @@ import wosis.analysis.plotting as wos_plot
 
 wos_plot.plot_kw_trend(RC, title='Plot of the number of keywords over time', save_plot_fn='figs/num_kw_per_pub.png')
 ```
+
+Further analysis can be accomplished by using Metaknowledge and Pandas.
