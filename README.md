@@ -30,13 +30,16 @@ $ pip install git+https://github.com/ConnectedSystems/wosis.git@master
 # Getting Started
 
 You will need access to the Premium API for Clarivate's Web of Science. This is given as a username and password.
-Create a `.yml` file with these details in the following format:
+
+It is advised that this information be placed in a `.yml` file in the following format:
 
 ```yaml
 wos:
   user: username
   password: password
 ```
+
+This is to keep your secret information out of the code. Remember not to share this file with others.
 
 The configuration file can then be loaded like so:
 
@@ -46,6 +49,8 @@ import wosis
 path_to_your_config_file = "config.yml"
 wos_config = wosis.load_config(path_to_your_config_file)
 ```
+
+This just returns a dictionary of the username and passwords.
 
 Then build a query using a list of desired and undesired terms and the subject areas to search. The format follows the standard given by Web of Science, as seen [here](https://images.webofknowledge.com/images/help/WOS/hs_wildcards.html).
 
