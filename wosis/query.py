@@ -301,8 +301,16 @@ def _handle_webfault(client, ex, min_period=3):
         client.close()
         _wait_for_server(2)
         client.connect()
+        _wait_for_server(1)
         return
     # End if
+
+    if "Back-end server is at capacity" in msg:
+        # have to wait a bit...
+        client.close()
+        _wait_for_server(60)
+        client.connect()
+        return
 
     period_msg = "period length is "
     submsg_len = len(period_msg)
