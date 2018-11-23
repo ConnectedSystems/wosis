@@ -72,14 +72,14 @@ def query(queries, overwrite, config):
         # End with
 
         num_ris_records = len(recs)
-        print(f"Got {num_ris_records} records")
+        print("Got {} records".format(num_ris_records))
 
         md5_hash = store.create_query_hash(query_str)
         hash_to_query.update({md5_hash: query_str})
-        prev_q_exists = os.path.isfile(f'tmp/{md5_hash}.txt')
+        prev_q_exists = os.path.isfile('tmp/{}.txt'.format(md5_hash))
         if (prev_q_exists and overwrite) or not prev_q_exists:
             ris_text = wos_parser.to_ris_text(recs)
-            wos_parser.write_file(ris_text, f'tmp/{md5_hash}', overwrite=overwrite)
+            wos_parser.write_file(ris_text, 'tmp/{}'.format(md5_hash), overwrite=overwrite)
         else:
             continue
         # End if
@@ -104,7 +104,7 @@ def grab_records(client, query, batch_size=100, verbose=False):
     """
     # Cache results so as to not spam the Clarivate servers
     md5_hash = store.create_query_hash(query)
-    cache_file = f'{md5_hash}.dmp'
+    cache_file = '{}.dmp'.format(md5_hash)
 
     os.makedirs('tmp', exist_ok=True)
     cache_file = os.path.join('tmp', cache_file)
@@ -131,7 +131,7 @@ def grab_records(client, query, batch_size=100, verbose=False):
         xml_list = []
         for batch_start in range(2, num_matches, batch_size):
             if verbose:
-                print(f'Getting {batch_start} to {batch_start + batch_size - 1}')
+                print('Getting {} to {}'.format(batch_start, batch_start + batch_size - 1))
 
             try:
                 resp = client.retrieve(q_id, batch_size, batch_start)
@@ -199,7 +199,7 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, g
     """
     os.makedirs('tmp', exist_ok=True)
     md5_hash = store.create_query_hash(query_str)
-    cache_file = f'{md5_hash}_ris.dmp'
+    cache_file = '{}_ris.dmp'.format(md5_hash)
     cache_file = os.path.join('tmp', cache_file)
 
     if os.path.isfile(cache_file):
@@ -331,6 +331,6 @@ def _wait_for_server(wait_time=150, verbose=False):
     * verbose : bool, print message (default: False)
     """
     if verbose:
-        print(f"Waiting {wait_time} second(s) for server to be available again...")
+        print("Waiting {} second(s) for server to be available again...".format(wait_time))
     time.sleep(wait_time)
 # End _wait_for_server()

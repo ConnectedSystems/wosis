@@ -190,7 +190,8 @@ def preview_matches(search_results, num=5, limit_abstract=None):
         if limit_abstract:
             ab = ab[0:limit_abstract]
 
-        print(f"{title}\n    {authors} ({year})\n    {journal}\nKeywords: {kwds}\n\n{ab}\n")
+        print("{a}\n    {b} ({c})\n    {d}\nKeywords: {e}\n\n{f}\n".format(a=title, b=authors, c=year,
+                                                                           d=journal, e=kwds, f=ab))
         print('=========================================')
         count += 1
         if count > num:
