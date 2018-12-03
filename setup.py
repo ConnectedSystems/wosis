@@ -16,14 +16,17 @@ if __name__ == "__main__":
             'lxml',
             'pyyaml',
             'wos',
-            'metaknowledge',
             'matplotlib',
             'seaborn',
             'pandas',
             'networkx',
             'python-louvain',
             'nltk',
-            'fuzzywuzzy'
+            'fuzzywuzzy',
+            'scikit-learn',
+            'tqdm'
         ],
-        dependency_links=['pip install git+https://github.com/titipata/wos_parser.git'],
+        dependency_links=[
+            'pip install git+https://github.com/titipata/wos_parser.git',
+            'pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections'],
     )
