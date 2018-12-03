@@ -1,7 +1,7 @@
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from functools import wraps
 from matplotlib.ticker import MaxNLocator
 
 from .search import get_unique_kw_titles
@@ -15,7 +15,7 @@ def plot_saver(func):
     ================
     * save_plot_fn : str, indicate path to save figure
     """
-
+    @wraps(func)
     def wrapper(*args, **kwargs):
         save_plot_fn = kwargs.pop('save_plot_fn', None)
         fig = func(*args, **kwargs)
@@ -25,7 +25,7 @@ def plot_saver(func):
                 save_plot_fn = save_plot_fn.strip('.png')
 
             plt.tight_layout()
-            fig.savefig(save_plot_fn+'.png', format='png', dpi=300)
+            fig.savefig(save_plot_fn + '.png', format='png', dpi=300)
         # End if
     # End wrapper()
 
@@ -51,11 +51,15 @@ def plot_kw_trend(search_results, title=None):
     """
     time_series = search_results.timeSeries(pandasMode=True)
 
-    num_kwds = [len(ent['DE']) + len(ent['ID']) for ent in time_series['entry']]
-    yearly = pd.DataFrame({'year': time_series['year'], 'count': num_kwds}).groupby('year')
+    num_kwds = [len(ent['DE']) + len(ent['ID'])
+                for ent in time_series['entry']]
+    yearly = pd.DataFrame(
+        {'year': time_series['year'], 'count': num_kwds}).groupby('year')
     num_pubs = yearly.count().sort_index()
-    kw_trend = pd.DataFrame({'year': time_series['year'], 'count': num_kwds}).groupby('year').sum().sort_index()
-    avg_kw_per_pub = (kw_trend.loc[:, 'count'] / num_pubs.loc[:, 'count']).to_frame()
+    kw_trend = pd.DataFrame({'year': time_series['year'], 'count': num_kwds}).groupby(
+        'year').sum().sort_index()
+    avg_kw_per_pub = (kw_trend.loc[:, 'count'] /
+                      num_pubs.loc[:, 'count']).to_frame()
 
     # Fill in the missing years
     min_year, max_year = kw_trend.index.min(), kw_trend.index.max()
@@ -65,32 +69,34 @@ def plot_kw_trend(search_results, title=None):
     num_pubs = pd.DataFrame({'count': [num_pubs.loc[i, 'count'] if i in num_pubs.index else 0 for i in idx.year]},
                             index=idx)
 
-    fig, (ax1, ax2) = plt.subplots(1,2)
+    fig, (ax1, ax2) = plt.subplots(1, 2)
 
     # Rotate x-axis labels if there is enough space
     rot = 45 if len(kw_trend) < 20 else 90
-    fig.subplots_adjust(top=0.3)  # make space for top title
 
     pub_data = num_pubs.loc[:, 'count']
     num_text = "Total Number of Publications: {}".format(pub_data.sum())
     if title:
-        title = title+'\n'+num_text
+        title = title + '\n' + num_text
     else:
         title = num_text
     plt.suptitle(title, fontsize='22')
 
-    avg_kw_per_pub.plot(kind='bar', figsize=(18, 6), rot=rot, ax=ax1, legend=False)
+    avg_kw_per_pub.plot(kind='bar', figsize=(
+        18, 6), rot=rot, ax=ax1, legend=False)
     ax1.set_xlabel("Year")
-    ax1.set_ylabel("Average Num. Keywords");
+    ax1.set_ylabel("Average Num. Keywords")
 
-    tick_threshold = 11  # Show every second year if number of years is above this
+    tick_threshold = 11  # Hide every second year if number of years is above this
     if len(avg_kw_per_pub.index) > tick_threshold:
         ax1.set_xticks([i for i in range(0, len(avg_kw_per_pub.index), 2)])
         ax1.set_xticklabels([i.year for i in avg_kw_per_pub.index[::2]])
 
-    log_form = True if max(pub_data) > 100 else False  # use log scale if large values found
+    # use log scale if large values found
+    log_form = True if max(pub_data) > 100 else False
 
-    ax2.yaxis.set_major_locator(MaxNLocator(integer=True))  # force y-axis to use integer values
+    # force y-axis to use integer values
+    ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
     num_pubs.plot(kind='bar', ax=ax2, rot=rot, logy=log_form, legend=False)
 
     if len(num_pubs.index) > tick_threshold:
@@ -132,18 +138,22 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
     num_titles = len(unique_titles)
     top_title = "Num. Publications per {} Keyword".format(kw_category.title())
     top_title = ' '.join(top_title.split())
-    ptitle = top_title + "\n{} unique titles out of {}".format(num_titles, len(corpora))
-    pubs_per_kw = pd.DataFrame(list(summary.items()), index=list(summary.keys()), columns=['Keyword', 'Count'])
+    ptitle = top_title + \
+        "\n{} unique titles out of {}".format(num_titles, len(corpora))
+    pubs_per_kw = pd.DataFrame(list(summary.items()), index=list(
+        summary.keys()), columns=['Keyword', 'Count'])
     pubs_per_kw.sort_values(by='Count', inplace=True)
 
-    ax = pubs_per_kw.plot(kind='bar', title=ptitle, figsize=(8,6))
+    ax = pubs_per_kw.plot(kind='bar', title=ptitle, figsize=(8, 6))
 
     if annotate:
         # Annotate number above bar
         for p in ax.patches:
-            ax.annotate("{}".format(p.get_height()), (p.get_x() + 0.01, p.get_height() * 1.015), fontsize=14)
+            ax.annotate("{}".format(p.get_height()), (p.get_x() +
+                                                      0.01, p.get_height() * 1.015), fontsize=14)
 
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # force y-axis to use integer values
+    # force y-axis to use integer values
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     plt.tight_layout()
     return ax.get_figure()
@@ -151,13 +161,16 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
 
 
 def _prep_journal_records(search_results):
-    journals = pd.DataFrame(search_results.forNLP(extraColumns=['SO']))  # SO is the field code for journal name
+    # SO is the field code for journal name
+    journals = pd.DataFrame(search_results.forNLP(extraColumns=['SO']))
 
     # Some journal names have issue name in the title so remove these to allow better grouping
-    journals.loc[:, 'SO'] = [x[0] for x in journals.loc[:, 'SO'].str.split('-')]
+    journals.loc[:, 'SO'] = [x[0]
+                             for x in journals.loc[:, 'SO'].str.split('-')]
 
     return journals
 # End _prep_journal_records()
+
 
 @plot_saver
 def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=True):
@@ -189,16 +202,19 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=
     plot_title = "Top {} Journals by Number of Publications".format(top_n)
 
     plt.tight_layout()
-    ax = pubs_by_journal[0:top_n][::-1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(10,6))
+    ax = pubs_by_journal[0:top_n][::-
+                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(10, 6))
     ax.set_ylabel('')
 
     if annotate:
         # Annotate number above bar
         for p in ax.patches:
-            ax.annotate("{}".format(p.get_width()), (p.get_width() + 0.01, p.get_y()), fontsize=12)
+            ax.annotate("{}".format(p.get_width()),
+                        (p.get_width() + 0.01, p.get_y()), fontsize=12)
 
     if print_stats:
-        print("{} out of {} ({:.2f}%)".format(subtotal, len(search_results), (subtotal/len(search_results)) * 100.0))
+        print("{} out of {} ({:.2f}%)".format(subtotal, len(
+            search_results), (subtotal / len(search_results)) * 100.0))
 
     return ax.get_figure()
 # End plot_pubs_per_journal()
@@ -219,10 +235,12 @@ def plot_pubs_across_time(search_results, top_n=10):
     """
     journals = _prep_journal_records(search_results)
 
-    top_n_journals = journals.groupby(by=['SO']).count().sort_values('id', ascending=False).head(top_n)
+    top_n_journals = journals.groupby(by=['SO']).count(
+    ).sort_values('id', ascending=False).head(top_n)
 
     pubs_by_journal_year = journals.groupby(by=['SO', 'year'])
-    pubs_for_journals = pubs_by_journal_year.count().sort_values('id', ascending=False).loc[top_n_journals.index, 'id']
+    pubs_for_journals = pubs_by_journal_year.count().sort_values(
+        'id', ascending=False).loc[top_n_journals.index, 'id']
     pubs_for_journals = pubs_for_journals.to_frame()
     pubs_for_journals.columns = ['Num. Publications']
     pubs_for_journals.index.name = 'Journal'
@@ -231,7 +249,8 @@ def plot_pubs_across_time(search_results, top_n=10):
     pubs_across_time = pubs_across_time.fillna(0.0).transpose()
     pubs_across_time = pubs_across_time.sort_index()
 
-    axes = pubs_across_time.plot(subplots=True, figsize=(6,8), layout=(10,1), sharey=True, legend=False)
+    axes = pubs_across_time.plot(subplots=True, figsize=(
+        6, 8), layout=(10, 1), sharey=True, legend=False)
 
     # Add legends (right hand side, outside of figure)
     [ax[0].legend([so], fontsize=10, loc='center left', bbox_to_anchor=(1, 0.5))
@@ -239,3 +258,38 @@ def plot_pubs_across_time(search_results, top_n=10):
 
     return axes[0][0].get_figure()
 # End plot_pubs_across_time()
+
+
+@plot_saver
+def plot_criteria_across_time(corpora_df, threshold=3):
+    """Plot criteria membership across time.
+
+    Parameters
+    ==========
+    * corpora_df : Pandas DataFrame, of records from wosis.analysis.search.collate_keyword_criteria_matches
+    * threshold : int, plot number of papers that are members of at least this number of criterias (default: 3)
+
+    Returns
+    ==========
+    * matplotlib figure object
+
+    See Also
+    ==========
+    * wosis.analysis.search.collate_keyword_criteria_matches
+    """
+    if 'num_criteria_match' not in corpora_df:
+        err_msg = 'DataFrame must have "num_criteria_match" column.\n\
+See `wosis.analysis.search.collate_keyword_criteria_matches`'
+        raise KeyError(err_msg)
+    # End if
+
+    match_col = corpora_df['num_criteria_match']
+    grp_count = corpora_df.loc[match_col >= threshold, :].groupby(
+        'year')['num_criteria_match'].count()
+    current_palette = sns.color_palette()
+
+    ax = grp_count.plot(kind='bar', color=current_palette[0],
+                        title='Papers with Keywords\nin {} or More Criteria'.format(threshold))
+
+    return ax.get_figure()
+# End plot_criteria_across_time()
