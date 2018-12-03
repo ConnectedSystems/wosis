@@ -4,9 +4,12 @@ import wos_parser
 import wos
 import pickle
 
+import metaknowledge as mk
+
 import time
 import warnings
 import yaml
+from tqdm import tqdm
 
 from suds import WebFault
 
@@ -29,46 +32,93 @@ def load_config(config_file):
     return wos_config
 # End load_config()
 
-def build_query(inclusive, exclusive, subject_area):
+
+def build_query(search_params):
     """Generate a WoS advanced query string
 
     Parameters
     ==========
-    * inclusive
-    * exclusive
-    * subject_area
+    * search_params : dict
+        * inclusive_kw : inclusive keywords
+        * exclusive_kw : exclusive keywords
+        * inclusive_jo : search within specific journals
+        * exclusive_jo : exclude specific journals
+        * subject_area : subject area
 
     Returns
     ==========
     * str, WoS advanced query string
     """
-    query = "("
-    query += ' OR '.join('"{}"'.format(w) for w in inclusive)
-    query += ")"
+    query = ''
+    if 'inclusive_kw' in search_params:
+        query = "("
+        query += ' OR '.join('"{}"'.format(w)
+                             for w in search_params['inclusive_kw'])
+        query += ")"
 
-    if len(exclusive) > 0:
+    if 'exclusive_kw' in search_params:
         query = "(" + query
         query += " NOT ("
-        query += " OR ".join('"{}"'.format(w) for w in exclusive)
+        query += " OR ".join('"{}"'.format(w)
+                             for w in search_params['exclusive_kw'])
         query += "))"
 
     query = "TS=" + query
 
-    if len(subject_area) > 0:
+    if 'inclusive_jo' in search_params:
+        query += " AND SO=("
+        query += " OR ".join('"{}"'.format(jo)
+                             for jo in search_params['inclusive_jo'])
+        query += ")"
+
+    if 'exclusive_jo' in search_params:
+        if 'inclusive_jo' in search_params:
+            query += " NOT ("
+        else:
+            query += " NOT SO=("
+        query += " OR ".join('"{}"'.format(jo)
+                             for jo in search_params['exclusive_jo'])
+        query += ")"
+
+    if 'subject_area' in search_params:
         query += " AND WC=("
-        query += " OR ".join('"{}"'.format(subject) for subject in subject_area)
+        query += " OR ".join('"{}"'.format(subject)
+                             for subject in search_params['subject_area'])
         query += ")"
 
     return query
 # End build_query()
 
 
-def query(queries, overwrite, config):
+def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
+    """Query the Web of Science collection via its API.
+
+    Parameters
+    ==========
+    * queries : WoS Client object
+    * overwrite : str, Web of Science Advanced Search query string
+    * config : int, number of records to request, between 1 and 100 inclusive.
+    * time_span : None or Dict,
+                  begin - Beginning date for this search. Format: YYYY-MM-DD
+                  end - Ending date for this search. Format: YYYY-MM-DD
+    * tmp_dir : bool, print out more information.
+
+    Returns
+    ==========
+    * tuple[dict]:
+        * hash_to_query: query_id to query string
+        * hash_to_col: query_id to metaknowledge collection
+    """
+
+    pj = os.path.join
     hash_to_query = {}
+    hash_to_col = {}
     for query_str in queries:
         with wos.WosClient(user=config['user'], password=config['password']) as client:
-            recs, xml_list = grab_records(client, query_str, verbose=False)
-            recs = grab_cited_works(client, query_str, recs, skip_refs=False, get_all_refs=True)
+            recs, xml_list = grab_records(
+                client, query_str, time_span=time_span, verbose=False)
+            recs = grab_cited_works(
+                client, query_str, recs, skip_refs=False, get_all_refs=True)
         # End with
 
         num_ris_records = len(recs)
@@ -76,26 +126,35 @@ def query(queries, overwrite, config):
 
         md5_hash = store.create_query_hash(query_str)
         hash_to_query.update({md5_hash: query_str})
-        prev_q_exists = os.path.isfile('tmp/{}.txt'.format(md5_hash))
+        tmp_file = pj(tmp_dir, md5_hash)
+        prev_q_exists = os.path.isfile('{}.txt'.format(tmp_file))
         if (prev_q_exists and overwrite) or not prev_q_exists:
             ris_text = wos_parser.to_ris_text(recs)
-            wos_parser.write_file(ris_text, 'tmp/{}'.format(md5_hash), overwrite=overwrite)
-        else:
-            continue
-        # End if
+            wos_parser.write_file(
+                ris_text, '{}'.format(tmp_file), overwrite=overwrite)
+        # else:
+        #     continue
+        # # End if
+
+        RC = mk.RecordCollection("{}.txt".format(tmp_file))
+        hash_to_col[md5_hash] = RC
     # End for
 
-    return hash_to_query
+    return hash_to_query, hash_to_col
 # End query()
 
 
-def grab_records(client, query, batch_size=100, verbose=False):
+def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
+                 verbose=False):
     """
     Parameters
     ==========
     * client : WoS Client object
     * query : str, Web of Science Advanced Search query string
     * batch_size : int, number of records to request, between 1 and 100 inclusive.
+    * time_span : None or Dict,
+                  begin - Beginning date for this search. Format: YYYY-MM-DD
+                  end - Ending date for this search. Format: YYYY-MM-DD
     * verbose : bool, print out more information.
 
     Returns
@@ -104,18 +163,18 @@ def grab_records(client, query, batch_size=100, verbose=False):
     """
     # Cache results so as to not spam the Clarivate servers
     md5_hash = store.create_query_hash(query)
-    cache_file = '{}.dmp'.format(md5_hash)
 
-    os.makedirs('tmp', exist_ok=True)
-    cache_file = os.path.join('tmp', cache_file)
+    os.makedirs(tmp_dir, exist_ok=True)
+    cache_file = '{}.dmp'.format(md5_hash)
+    cache_file = os.path.join(tmp_dir, cache_file)
     if not os.path.isfile(cache_file):
         recs = []
 
         try:
-            probe = client.search(query, count=1)
+            probe = client.search(query, count=1, timeSpan=time_span)
         except WebFault as e:
             _handle_webfault(client, e)
-            probe = client.search(query, count=1)
+            probe = client.search(query, count=1, timeSpan=time_span)
         # End try
 
         q_id = probe.queryId
@@ -129,9 +188,10 @@ def grab_records(client, query, batch_size=100, verbose=False):
         # (remember range is end exclusive, hence the -1)
         leap = batch_size - 1
         xml_list = []
-        for batch_start in range(2, num_matches, batch_size):
+        for batch_start in tqdm(range(2, num_matches, batch_size)):
             if verbose:
-                print('Getting {} to {}'.format(batch_start, batch_start + batch_size - 1))
+                print('Getting {} to {}'.format(
+                    batch_start, batch_start + leap))
 
             try:
                 resp = client.retrieve(q_id, batch_size, batch_start)
@@ -181,7 +241,8 @@ def _extract_ref(c_rec, ref_order):
 # End _extract_ref()
 
 
-def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, get_all_refs=False):
+def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False,
+                     get_all_refs=False, tmp_dir='tmp'):
     """
     Parameters
     ==========
@@ -197,10 +258,10 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, g
     ==========
     * list, of RIS records
     """
-    os.makedirs('tmp', exist_ok=True)
+    os.makedirs(tmp_dir, exist_ok=True)
     md5_hash = store.create_query_hash(query_str)
     cache_file = '{}_ris.dmp'.format(md5_hash)
-    cache_file = os.path.join('tmp', cache_file)
+    cache_file = os.path.join(tmp_dir, cache_file)
 
     if os.path.isfile(cache_file):
         warnings.warn("Using cached results...")
@@ -214,7 +275,9 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False, g
     ris_records = wos_parser.rec_info_to_ris(recs)
     if not skip_refs:
         warnings.warn("Getting referenced works...")
-        ris_records = _get_referenced_works(client, ris_records, get_all_refs=get_all_refs)
+
+        ris_records = _get_referenced_works(
+            client, ris_records, get_all_refs=get_all_refs)
     else:
         warnings.warn("Not getting referenced works")
 
@@ -239,7 +302,8 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
     list, of RIS records with cited references added
     """
     # Get cited articles for each record
-    ref_order = ['citedAuthor', 'year', 'citedTitle', 'citedWork', 'volume', 'page', 'docid']
+    ref_order = ['citedAuthor', 'year', 'citedTitle',
+                 'citedWork', 'volume', 'page', 'docid']
 
     # NOTE: On WebFault exception, we force the program to pause for some time
     # in an attempt to avoid overloading the clarivate servers
@@ -262,14 +326,22 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 
         if (num_refs > batch_size) and get_all_refs:
             q_id = cite_recs.queryId
-            warnings.warn("A reference had more than {} citations. This can get quite large...".format(batch_size))
+            warnings.warn(
+                "A reference had more than {} citations. This can take a long time and get quite large...".format(batch_size))
 
-            for batch_start in range(batch_size+1, num_refs, batch_size):
+            for batch_start in range(batch_size + 1, num_refs, batch_size):
                 try:
-                    resp = client.citedReferencesRetrieve(q_id, batch_size, batch_start)
+                    resp = client.citedReferencesRetrieve(
+                        q_id, batch_size, batch_start)
                 except WebFault as e:
                     _handle_webfault(client, e)
-                    resp = client.citedReferencesRetrieve(q_id, batch_size, batch_start)
+                    resp = client.citedReferencesRetrieve(
+                        q_id, batch_size, batch_start)
+                except Exception as e:
+                    # Handle URLError
+                    _handle_webfault(client, e, min_period=60)
+                    resp = client.citedReferencesRetrieve(
+                        q_id, batch_size, batch_start)
                 # End try
 
                 for c_ref in resp:
@@ -277,11 +349,12 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
                 # End for
             # End for
         elif (num_refs > batch_size):
-            warnings.warn("A reference had more than {0} citations. Only retrieved the first {0}.".format(batch_size))
+            warnings.warn(
+                "A reference had more than {0} citations. Only retrieved the first {0}.".format(batch_size))
         # End if
     # End for
 
-    print("Finished")
+    # print("Finished")
     return ris_records
 # End _get_referenced_works()
 
@@ -305,7 +378,7 @@ def _handle_webfault(client, ex, min_period=3):
         return
     # End if
 
-    if "Back-end server is at capacity" in msg:
+    if "Back-end server is at capacity" in msg or "URLError" in msg:
         # have to wait a bit...
         client.close()
         _wait_for_server(60)
@@ -316,9 +389,11 @@ def _handle_webfault(client, ex, min_period=3):
     submsg_len = len(period_msg)
     pos = msg.find(period_msg)
     if pos == -1:
-        raise RuntimeError("Could not handle WebFault. Error message: {}".format(msg))
-    sub_start = pos+submsg_len
-    secs_to_wait = max(min_period, int(msg[sub_start:sub_start+3].split(" ")[0]))
+        raise RuntimeError(
+            "Could not handle WebFault. Error message: {}".format(msg))
+    sub_start = pos + submsg_len
+    secs_to_wait = max(min_period, int(
+        msg[sub_start:sub_start + 3].split(" ")[0]))
     _wait_for_server(secs_to_wait)
 # End _handle_webfault()
 
