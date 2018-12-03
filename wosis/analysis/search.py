@@ -1,6 +1,9 @@
 import metaknowledge as mk
 from . import similarity as sims
 import itertools as it
+from functools import reduce
+import pandas as pd
+
 
 def search_records(records, keywords, threshold=60.0):
     matches = mk.RecordCollection()
@@ -34,20 +37,20 @@ def search_records(records, keywords, threshold=60.0):
         # End if
     # End for
 
-    matches.name = str(len(matches))
+    matches.name = '{} - {}'.format(keywords, len(matches))
 
     return matches
 # End search_records()
 
 
 def keyword_matches(records, keywords, threshold=60.0):
-    """
-    Get records for each individiual keyword of interest
+    """Get records for each individiual keyword of interest
 
     Parameters
     ==========
     * records : iterable, of RIS records
     * keywords : list[str], of keywords
+    * threshold : float, similarity score threshold - has to be above this to indicate a match.
 
     Returns
     ==========
@@ -64,26 +67,89 @@ def keyword_matches(records, keywords, threshold=60.0):
 # End keyword_matches()
 
 
+def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
+    """Match keywords based on criteria.
+
+    Parameters
+    ==========
+    * records : Metaknowledge record collection
+    * keyword_criteria : dict, of sets with each set being a collection of keywords
+    * threshold : float, similarity score threshold - has to be above this to indicate a match.
+
+    Returns
+    ==========
+    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+    """
+    criteria_matches = {}
+    criteria_summary = {}
+    for criteria in list(keyword_criteria):
+        criteria_kws = keyword_criteria[criteria]
+        search_results = search_records(
+            records, criteria_kws, threshold=threshold)
+        ind_recs, summary = keyword_matches(search_results, criteria_kws, 95.0)
+
+        criteria_matches[criteria] = ind_recs
+        criteria_summary[criteria] = summary
+    # End for
+
+    return criteria_matches, criteria_summary
+# End keyword_matches_by_criteria()
+
+
+def collate_keyword_criteria_matches(records, criteria_records):
+    """Takes dictionary of keyword matches by criteria and collates into a single DataFrame.
+
+    Parameters
+    ==========
+    * records : Metaknowledge record collection
+    * criteria_records : dict, of sets with each set being a collection of keywords
+
+    Returns
+    ==========
+    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+
+    See Also
+    ==========
+    * keyword_matches_by_criteria()
+    """
+    for crit in criteria_records:
+        criteria_records[crit] = reduce(
+            lambda x, y: x + y, list(criteria_records[crit].values()))
+
+    corpora_df = pd.DataFrame(records.forNLP())
+    corpora_df['num_criteria_match'] = 0
+
+    for wos_id in corpora_df['id']:
+        for crit in criteria_records:
+            if criteria_records[crit].containsID(wos_id):
+                corpora_df.loc[corpora_df['id'] ==
+                               wos_id, 'num_criteria_match'] += 1
+            # End if
+        # End for
+    # End for
+
+    return corpora_df
+# End collate_keyword_criteria_matches()
+
+
 def preview_matches_by_keyword(match_records, specific_keyword=None):
     """
     Parameters
     ==========
     * match_records : dict, records sorted by matching keywords.
-    * keywords : list, of keywords
+    * specific_keyword : str, keyword of interest
 
     See Also
     ==========
     * keyword_matches()
     """
     if specific_keyword:
-        tmp = {specific_keyword: match_records[specific_keyword]}
-    else:
-        tmp = match_records
+        match_records = match_records[specific_keyword]
     # End if
 
     for kw_name in match_records:
         if len(match_records[kw_name]) > 0:
-            print('Keyword:' , kw_name)
+            print('Keyword:', kw_name)
             for rec in match_records[kw_name]:
                 print('  Title:', rec.get('TI'))
                 print('  Authors:', '; '.join(rec.get('AU')))
@@ -103,7 +169,6 @@ def get_unique_kw_titles(match_records):
     Parameters
     ==========
     * match_records : dict, records sorted by matching keywords.
-    * keywords : list, of keywords
 
     Returns
     ==========
@@ -131,8 +196,9 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
     ==========
     * records : dict, records sorted by matching keywords.
     * author_list : list, of authors
-    * threshold : float, similarity of author names have to be above this threshold to be included
-                  0 to 100, where 100 is exact match.
+    * threshold : float, similarity of author names have to be above this
+                  threshold to be included.
+                  (0 to 100, where 100 is exact match)
 
     Returns
     ==========
@@ -170,7 +236,8 @@ def preview_matches(search_results, num=5, limit_abstract=None):
     ==========
     * search_results : iterable, of RIS records
     * num : int, number of records to preview
-    * limit_abstract : int, Number of characters to display in the abstract. Defaults to None.
+    * limit_abstract : int, Number of characters to display in the abstract.
+                       Defaults to None.
     """
     count = 0
     for rec in search_results:
