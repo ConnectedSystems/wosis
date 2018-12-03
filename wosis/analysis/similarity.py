@@ -5,8 +5,7 @@ from fuzzywuzzy import fuzz
 
 
 def penn_to_wn(tag):
-    """
-    Convert between a Penn Treebank tag to a simplified Wordnet tag.
+    """Convert between a Penn Treebank tag to a simplified Wordnet tag.
     Examples taken from: http://nlpforhackers.io/wordnet-sentence-similarity/
     """
     if tag.startswith('N'):
@@ -37,8 +36,7 @@ def tagged_to_synset(word, tag):
 
 
 def sentence_similarity(sentence1, sentence2):
-    """
-    Compute the sentence similarity using Wordnet.
+    """Compute the sentence similarity using Wordnet.
     Examples taken from: http://nlpforhackers.io/wordnet-sentence-similarity/
     """
     # Tokenize and tag
@@ -75,8 +73,7 @@ def sentence_similarity(sentence1, sentence2):
 
 
 def string_match(word1, word2):
-    """
-    Gives a score indicating how well two strings match.
+    """Gives a score indicating how well two strings match.
 
     Parameters
     ==========
@@ -89,3 +86,40 @@ def string_match(word1, word2):
     """
     return fuzz.token_sort_ratio(word1, word2)
 # End string_match()
+
+
+def merge_similar(data):
+    """Merge n-grams that are positional duplicates, e.g. "dam water" and "water dam"
+
+    Parameters
+    ==========
+    * data : list, of keywords/ngrams
+
+    Returns
+    ========
+    * list, of merged keywords/ngrams
+    """
+    dataset = [set(k) for k in data]
+    tmp = [k for k in dataset if dataset.count(k) == 1]
+
+    tmp2 = []
+    for i in dataset:
+        if i not in tmp and i not in tmp2:
+            tmp2.append(i)
+        # End if
+    # End for
+
+    unique_items = tmp + tmp2
+
+    final = {}
+    for it in unique_items:
+        final[tuple(it)] = 0
+        for entry, v in data.items():
+            if set(entry) == it:
+                final[tuple(it)] += v
+            # End if
+        # End for
+    # End for
+
+    return final
+# End merge_similar()
