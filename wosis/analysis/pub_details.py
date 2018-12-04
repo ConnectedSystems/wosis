@@ -41,4 +41,18 @@ def author_citations(records):
     author_citations = author_citations.rename(columns={'Counts': 'Citations'})
 
     return author_citations.sort_values(by='Citations', ascending=False)
-# End author_citationss()
+# End author_citations()
+
+
+def link_to_pub(records):
+    if 'metaknowledge' in str(type(records)):
+        recs = records.forNLP(extraColumns=["AU", "SO", "DE", 'DOI'], lower=False, removeNonWords=False)
+        df = pd.DataFrame(recs)
+    elif 'DataFrame' in str(type(records)):
+        df = records
+    # End if
+
+    df.loc[df['DOI'] != '', 'DOI link'] = "https://dx.doi.org/" + df.loc[df['DOI'] != '', 'DOI'].astype(str)
+
+    return df
+# End link_to_pub()
