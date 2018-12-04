@@ -4,14 +4,15 @@ A python package developed to support analysis of Web of Science data from query
 
 [![DOI](https://zenodo.org/badge/155658135.svg)](https://zenodo.org/badge/latestdoi/155658135)
 
-The scope of this package is quite narrow and is currently intended for limited use.
-It is under active development to support further use cases.
+This package is under development and is currently intended for limited use.
 
 Currently it simplifies the process of:
 
 * Getting publication data from the Web of Science collection
 * Creating plots that indicate publication trends
 * Identifying topics of interest
+
+See the [included tutorial](https://github.com/ConnectedSystems/wosis/tree/master/tutorial) for a more complete introductory guide.
 
 Examples of its use can be found by looking at the notebooks within the
 [sd-prac-bibanalysis](https://github.com/ConnectedSystems/sd-prac-bibanalysis) repository.
@@ -106,7 +107,6 @@ Specific analysis can be accomplished by using Metaknowledge and Pandas.
 See the [included tutorial](https://github.com/ConnectedSystems/wosis/tree/master/tutorial) for a more complete introductory guide.
 
 # Related Works
-===============
 
 * [revtools](http://revtools.net/), an R package for exploratory analysis of bibliographic data developed by M. Westgate (https://doi.org/10.1101/262881)
-* [Science Concierge](https://github.com/titipata/science_concierge), Python package for content based recommendation by T. Achakulvisut (http://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0158423)
+* [Science Concierge](https://github.com/titipata/science_concierge), Python package for content based recommendation by T. Achakulvisut et al. (http://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0158423)
