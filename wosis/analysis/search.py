@@ -73,12 +73,15 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
     Parameters
     ==========
     * records : Metaknowledge record collection
-    * keyword_criteria : dict, of sets with each set being a collection of keywords
-    * threshold : float, similarity score threshold - has to be above this to indicate a match.
+    * keyword_criteria : dict, of sets with each set being a collection of
+                               keywords
+    * threshold : float, similarity score threshold - has to be above this
+                         to indicate a match.
 
     Returns
     ==========
-    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+    * tuple[dict], matching records by keyword, and
+                   {keyword: number of matching records}
     """
     criteria_matches = {}
     criteria_summary = {}
@@ -97,16 +100,19 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
 
 
 def collate_keyword_criteria_matches(records, criteria_records):
-    """Takes dictionary of keyword matches by criteria and collates into a single DataFrame.
+    """Takes dictionary of keyword matches by criteria and collates into
+    a single DataFrame.
 
     Parameters
     ==========
     * records : Metaknowledge record collection
-    * criteria_records : dict, of sets with each set being a collection of keywords
+    * criteria_records : dict, of sets with each set being a collection
+                               of keywords
 
     Returns
     ==========
-    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+    * tuple[dict], matching records by keyword, and
+                   {keyword: number of matching records}
 
     See Also
     ==========
@@ -231,7 +237,8 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
 
 
 def preview_matches(search_results, num=5, limit_abstract=None):
-    """
+    """Preview items in results.
+
     Parameters
     ==========
     * search_results : iterable, of RIS records

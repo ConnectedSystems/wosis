@@ -173,7 +173,7 @@ def _prep_journal_records(search_results):
 
 
 @plot_saver
-def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=True):
+def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=True):
     """Plot horizontal bar plot of publications for each journal in descending order.
 
     Parameters
@@ -201,6 +201,10 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=
     subtotal = pubs_by_journal.sort_values(ascending=False)[0:10].sum()
     plot_title = "Top {} Journals by Number of Publications".format(top_n)
 
+    if show_stats:
+        plot_title += "\n{} out of {} ({:.2f}%)".format(subtotal, len(
+            search_results), (subtotal / len(search_results)) * 100.0)
+
     plt.tight_layout()
     ax = pubs_by_journal[0:top_n][::-
                                   1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(10, 6))
@@ -211,10 +215,6 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, print_stats=
         for p in ax.patches:
             ax.annotate("{}".format(p.get_width()),
                         (p.get_width() + 0.01, p.get_y()), fontsize=12)
-
-    if print_stats:
-        print("{} out of {} ({:.2f}%)".format(subtotal, len(
-            search_results), (subtotal / len(search_results)) * 100.0))
 
     return ax.get_figure()
 # End plot_pubs_per_journal()
