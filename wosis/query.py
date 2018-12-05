@@ -13,6 +13,10 @@ from tqdm import tqdm
 
 from suds import WebFault
 
+import logging
+
+# suppress output from suds which gets really annoying
+logging.getLogger('suds.client').setLevel(logging.CRITICAL)
 
 def load_config(config_file):
     """Load a YAML-based configuration file.
