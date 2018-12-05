@@ -307,7 +307,7 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 
     # NOTE: On WebFault exception, we force the program to pause for some time
     # in an attempt to avoid overloading the clarivate servers
-    for rec in ris_records:
+    for rec in tqdm(ris_records):
         try:
             cite_recs = client.citedReferences(rec['UT'])
         except WebFault as e:
@@ -359,6 +359,29 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 # End _get_referenced_works()
 
 
+def get_citing_works(wos_id, config):
+    """Retrieve publications that cite a given paper
+
+    Parameters
+    ==========
+    * wos_id : str, Web of Science ID
+    * config : dict, config settings
+
+    Returns
+    ==========
+    * Metaknowledge RecordCollection
+    """
+    raise UnimplementedError("This method is not yet finished")
+    with wos.WosClient(user=config['user'], password=config['password']) as client:
+        pass
+        client.
+    # End with
+
+# End get_citing_works()
+
+
+
+
 def _handle_webfault(client, ex, min_period=3):
     """
     Parameters
@@ -368,33 +391,40 @@ def _handle_webfault(client, ex, min_period=3):
     """
     msg = str(ex)
 
-    if "Server.IDLimit" in msg:
-        # request threshold exceeded, so reconnect
-        print("Server Error Msg:", msg)
-        client.close()
-        _wait_for_server(2)
-        client.connect()
-        _wait_for_server(1)
-        return
-    # End if
-
-    if "Back-end server is at capacity" in msg or "URLError" in msg:
-        # have to wait a bit...
-        client.close()
-        _wait_for_server(60)
-        client.connect()
-        return
-
     period_msg = "period length is "
     submsg_len = len(period_msg)
     pos = msg.find(period_msg)
     if pos == -1:
-        raise RuntimeError(
-            "Could not handle WebFault. Error message: {}".format(msg))
-    sub_start = pos + submsg_len
-    secs_to_wait = max(min_period, int(
-        msg[sub_start:sub_start + 3].split(" ")[0]))
-    _wait_for_server(secs_to_wait)
+        if "Server.IDLimit" in msg:
+            # request threshold exceeded, so reconnect
+            print("Server Error Msg:", msg)
+
+            client.close()
+            _wait_for_server(3)
+            client.connect()
+            _wait_for_server(1)
+            return
+        # End if
+
+        if "Back-end server is at capacity" in msg or "URLError" in msg:
+            # have to wait a bit...
+            client.close()
+            _wait_for_server(60)
+            client.connect()
+            return
+        # End if
+
+    else:
+        sub_start = pos + submsg_len
+        secs_to_wait = max(min_period, int(
+            msg[sub_start:sub_start + 3].split(" ")[0]))
+        _wait_for_server(secs_to_wait)
+
+        return
+    # End if
+
+    raise RuntimeError(
+        "Could not handle WebFault. Error message: {}".format(msg))
 # End _handle_webfault()
 
 
