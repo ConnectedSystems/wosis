@@ -374,7 +374,7 @@ def get_citing_works(wos_id, config):
     raise UnimplementedError("This method is not yet finished")
     with wos.WosClient(user=config['user'], password=config['password']) as client:
         pass
-        client.
+        # client.
     # End with
 
 # End get_citing_works()
