@@ -331,7 +331,7 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
         if (num_refs > batch_size) and get_all_refs:
             q_id = cite_recs.queryId
             warnings.warn(
-                "A reference had more than {} citations. This can take a long time and get quite large...".format(batch_size))
+                "A reference had more than {} citations. This can take a long time and the cache file can get quite large...".format(batch_size))
 
             for batch_start in range(batch_size + 1, num_refs, batch_size):
                 try:
