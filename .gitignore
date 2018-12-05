@@ -58,3 +58,5 @@ docs/_build/
 target/
 
 tutorial/config\.yml
+
+data/
