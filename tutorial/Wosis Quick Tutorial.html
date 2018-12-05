@@ -11827,11 +11827,17 @@ This is because some things are easier to accomplish with one or the other. In t
 <p>1) clone the project with <code>git</code> (the dollar sign represents the terminal prompt)</p>
 <div class="highlight"><pre><span></span>$ git clone https://github.com/ConnectedSystems/wosis.git
 $ <span class="nb">cd</span> wosis
-$ python setup.py develop
+$ pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections
+$ pip install git+https://github.com/titipata/wos_parser.git@master
+$ pip install -e .
 </pre></div>
 <p>2) download, and extract, the project files from the <a href="https://github.com/ConnectedSystems/wosis">github repo</a> (look for the green button on the right hand side)</p>
-<div class="highlight"><pre><span></span>$ python setup.py develop
+<div class="highlight"><pre><span></span>$ pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections
+$ pip install git+https://github.com/titipata/wos_parser.git@master
+$ pip install -e .
 </pre></div>
+<p>Note the period (<code>.</code>) - yes it is important!</p>
+<p>The first two <code>pip install</code> commands downloads and installs specific package versions that are required by Wosis.</p>
 
 </div>
 </div>

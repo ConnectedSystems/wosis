@@ -21,12 +21,10 @@ if __name__ == "__main__":
             'pandas',
             'networkx',
             'python-louvain',
+            'python-levenshtein',
             'nltk',
             'fuzzywuzzy',
             'scikit-learn',
-            'tqdm'
-        ],
-        dependency_links=[
-            'pip install git+https://github.com/titipata/wos_parser.git',
-            'pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections'],
+            'tqdm',
+        ]
     )

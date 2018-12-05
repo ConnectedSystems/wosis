@@ -29,12 +29,16 @@ For the moment it is probably best to install by:
 ```bash
 $ git clone https://github.com/ConnectedSystems/wosis.git
 $ cd wosis
-$ python setup.py develop
+$ pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections
+$ pip install git+https://github.com/titipata/wos_parser.git@master
+$ pip install -e .
 ```
 
 Alternatively, via `pip`
 
 ```bash
+$ pip install git+https://github.com/ConnectedSystems/metaknowledge.git@add-collections
+$ pip install git+https://github.com/titipata/wos_parser.git@master
 $ pip install git+https://github.com/ConnectedSystems/wosis.git@master
 ```
 
