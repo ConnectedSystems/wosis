@@ -21,10 +21,12 @@ if __name__ == "__main__":
             'pandas',
             'networkx',
             'python-louvain',
-            'python-levenshtein',
             'nltk',
             'fuzzywuzzy',
             'scikit-learn',
             'tqdm',
-        ]
+        ],
+        extras_require={
+            'levenshtein': ['python-levenshtein']
+        }
     )
