@@ -34,7 +34,80 @@ def plot_saver(func):
 
 
 @plot_saver
-def plot_kw_trend(search_results, title=None):
+def plot_pub_trend(search_results, title=None, no_log_scale=False):
+    """Plot publication trend across time.
+
+    Will publication trend in log scale if large number of publications found.
+    This can be avoided by setting `no_log_scale` to `True`.
+
+    Parameters
+    ==========
+    * search_results : MetaKnowledge RecordCollection, of search results
+    * title : str, title for plot
+    * no_log_scale : bool, avoid log scale
+
+    Returns
+    ==========
+    * matplotlib figure object
+    """
+    time_series = search_results.timeSeries(pandasMode=True)
+
+    num_kwds = [len(ent['DE']) + len(ent['ID'])
+                for ent in time_series['entry']]
+    yearly = pd.DataFrame(
+        {'year': time_series['year'], 'count': num_kwds}).groupby('year')
+    num_pubs = yearly.count().sort_index()
+
+    # Fill in the missing years
+    min_year, max_year = num_pubs.index.min(), num_pubs.index.max()
+    idx = pd.period_range(min_year, max_year, freq='Y')
+
+    num_pubs = pd.DataFrame({'count': [num_pubs.loc[i, 'count'] if i in num_pubs.index else 0 for i in idx.year]},
+                            index=idx)
+
+    fig, axes = plt.subplots(1)
+
+    # Rotate x-axis labels if there is enough space
+    rot = 45 if len(num_pubs.index) < 20 else 90
+
+    pub_data = num_pubs.loc[:, 'count']
+    num_text = "Total Number of Publications: {}".format(pub_data.sum())
+    if title:
+        title = title + '\n' + num_text
+    else:
+        title = num_text
+    plt.suptitle(title, fontsize='22')
+
+    tick_threshold = 11  # Hide every second year if number of years is above this
+
+    if not no_log_scale:
+        # use log scale if large values found
+        log_form = True if max(pub_data) > 100 else False
+    else:
+        log_form = False
+    # End if
+
+    # force y-axis to use integer values
+    axes.yaxis.set_major_locator(MaxNLocator(integer=True))
+    num_pubs.plot(kind='bar', figsize=(9, 6), ax=axes, rot=rot, logy=log_form, legend=False)
+
+    if len(num_pubs.index) > tick_threshold:
+        axes.set_xticks([i for i in range(0, len(num_pubs.index), 2)])
+        axes.set_xticklabels([i.year for i in num_pubs.index[::2]])
+
+    axes.set_xlabel("Year")
+    ax_label = "Num. Publications"
+    if log_form:
+        ax_label += "\n(log scale)"
+
+    axes.set_ylabel(ax_label)
+
+    return fig
+# End plot_pub_trend()
+
+
+@plot_saver
+def plot_kw_trend(search_results, title=None, no_log_scale=False):
     """Plot keyword trends across time.
 
     Parameters
@@ -92,8 +165,12 @@ def plot_kw_trend(search_results, title=None):
         ax1.set_xticks([i for i in range(0, len(avg_kw_per_pub.index), 2)])
         ax1.set_xticklabels([i.year for i in avg_kw_per_pub.index[::2]])
 
-    # use log scale if large values found
-    log_form = True if max(pub_data) > 100 else False
+    if not no_log_scale:
+        # use log scale if large values found
+        log_form = True if max(pub_data) > 100 else False
+    else:
+        log_form = False
+    # End if
 
     # force y-axis to use integer values
     ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -221,7 +298,7 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
 
 
 @plot_saver
-def plot_pubs_across_time(search_results, top_n=10):
+def plot_journal_pub_trend(search_results, top_n=10):
     """Plot publications across time by journal.
 
     Parameters
@@ -257,11 +334,11 @@ def plot_pubs_across_time(search_results, top_n=10):
      for ax, so in zip(axes, pubs_across_time.columns)]
 
     return axes[0][0].get_figure()
-# End plot_pubs_across_time()
+# End plot_journal_pub_trend()
 
 
 @plot_saver
-def plot_criteria_across_time(corpora_df, threshold=3):
+def plot_criteria_trend(corpora_df, threshold=3):
     """Plot criteria membership across time.
 
     Parameters
@@ -292,4 +369,4 @@ See `wosis.analysis.search.collate_keyword_criteria_matches`'
                         title='Papers with Keywords\nin {} or More Criteria'.format(threshold))
 
     return ax.get_figure()
-# End plot_criteria_across_time()
+# End plot_criteria_trend()
