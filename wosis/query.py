@@ -1,4 +1,6 @@
 import os
+from os.path import join as pj
+
 import wosis.store as store
 import wos_parser
 import wos
@@ -9,6 +11,7 @@ import metaknowledge as mk
 import time
 import warnings
 import yaml
+import json
 from tqdm import tqdm
 
 from suds import WebFault
@@ -16,7 +19,8 @@ from suds import WebFault
 import logging
 
 
-__all__ = ['load_config', 'build_query', 'query', 'grab_records', 'grab_cited_works', 'get_citing_works']
+__all__ = ['load_config', 'build_query', 'query', 'grab_records',
+           'grab_cited_works', 'get_citing_works', 'load_query_results']
 
 
 # suppress output from suds which gets really annoying
@@ -99,6 +103,13 @@ def build_query(search_params):
 # End build_query()
 
 
+def load_query_results(query_id, file_loc='tmp'):
+    fn = pj(file_loc, query_id+'.txt')
+    return mk.RecordCollection(fn)
+# End load_query_results()
+
+
+
 def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
     """Query the Web of Science collection via its API.
 
@@ -110,7 +121,7 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
     * time_span : None or Dict,
                   begin - Beginning date for this search. Format: YYYY-MM-DD
                   end - Ending date for this search. Format: YYYY-MM-DD
-    * tmp_dir : bool, print out more information.
+    * tmp_dir : str, path to temporary directory. Defaults to `tmp` in current location.
 
     Returns
     ==========
@@ -118,8 +129,6 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
         * hash_to_query: query_id to query string
         * hash_to_col: query_id to metaknowledge collection
     """
-
-    pj = os.path.join
     hash_to_query = {}
     hash_to_col = {}
     for query_str in queries:
@@ -148,6 +157,10 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
         RC = mk.RecordCollection("{}.txt".format(tmp_file))
         hash_to_col[md5_hash] = RC
     # End for
+
+    # dump out the query hash to file
+    with open(pj(tmp_dir, 'hash_to_query.txt'), 'w') as hash_file:
+        hash_file.write(json.dumps(hash_to_query, indent=2))
 
     return hash_to_query, hash_to_col
 # End query()
