@@ -1,3 +1,5 @@
+import pandas as pd
+
 from nltk.stem.wordnet import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
@@ -8,6 +10,7 @@ def display_topics(model, feature_names, num_top_words=10):
         match = " ".join([feature_names[i]
                           for i in topic.argsort()[:-num_top_words - 1:-1]])
         print("Topic {}: {}".format(topic_idx + 1, match))
+# End display_topics()
 
 
 def find_topics(corpora_df, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
@@ -118,6 +121,7 @@ def remove_by_journals(corpora, unrelated_journals, verbose=True):
         corpora = corpora.drop(corpora.loc[corpora['SO'].str.contains(unrelated)].index,
                                axis=0)
     return corpora
+# End remove_by_journals()
 
 
 def remove_by_title(corpora, unrelated_titles, verbose=True):
@@ -133,3 +137,28 @@ def remove_by_title(corpora, unrelated_titles, verbose=True):
             corpora.loc[corpora['title'].str.contains(unrelated)].index, axis=0)
 
     return corpora
+# End remove_by_title()
+
+
+def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
+    """Remove records with no associated DOI from DataFrame.
+
+    Parameters
+    ==========
+    * corpora : Pandas DataFrame
+    * return_removed : bool,
+    * verbose : bool, print out information during removal process. Defaults to True.
+
+    Returns
+    ==========
+    * tuple[Pandas DataFrame], Filtered DataFrame and DataFrame of removed records
+    """
+    to_be_removed = corpora.loc[corpora['DOI'] == '', :]
+    if verbose:
+        count_empty = to_be_removed['DOI'].count()
+        print("Removing {} records with no DOIs".format(count_empty))
+
+    filtered = corpora.loc[corpora['DOI'] != '', :]
+
+    return filtered, to_be_removed
+# End remove_empty_DOIs()
