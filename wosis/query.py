@@ -15,8 +15,13 @@ from suds import WebFault
 
 import logging
 
+
+__all__ = ['load_config', 'build_query', 'query', 'grab_records', 'grab_cited_works', 'get_citing_works']
+
+
 # suppress output from suds which gets really annoying
 logging.getLogger('suds.client').setLevel(logging.CRITICAL)
+
 
 def load_config(config_file):
     """Load a YAML-based configuration file.
