@@ -1,4 +1,6 @@
 import metaknowledge as mk
+import pandas as pd
+
 
 def extract_recs(id_list, mk_rec, name=None):
     """Extract given records by ID from metaknowledge collection into a new collection.
@@ -20,3 +22,20 @@ def extract_recs(id_list, mk_rec, name=None):
 
     return new_rec
 # End extract_recs()
+
+
+def rec_to_df(recs, extra_cols=None):
+    """Convert the given Metaknowledge RecordCollection to a Pandas DataFrame
+
+    Parameters
+    ==========
+    * rec : Metaknowledge RecordCollection
+    * cols : list[str], column names to extract given as RIS field codes. If `None` extracts all relevant fields.
+
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    df = pd.DataFrame(recs.forNLP(extraColumns=["AU", "SO", "DE", "DOI"]))
+    return df
+# End rec_to_df()
