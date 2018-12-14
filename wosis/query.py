@@ -402,8 +402,6 @@ def get_citing_works(wos_id, config):
 # End get_citing_works()
 
 
-
-
 def _handle_webfault(client, ex, min_period=3):
     """
     Parameters
