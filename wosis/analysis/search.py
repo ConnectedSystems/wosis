@@ -6,9 +6,32 @@ import pandas as pd
 
 
 def search_records(records, keywords, threshold=60.0):
+    """Search records for a given set of keywords.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * keywords : set, of keywords
+    * threshold : float, similarity must be equal to or above this percentage threshold
+
+    Returns
+    ==========
+    * Metaknowledge RecordCollection, of matched records
+    """
     matches = mk.RecordCollection()
     for record in records:
-        kwds = record.get('keywords', None)
+        kwds = record.get('DE', None)
+        other_kw_field = record.get('keywords', None)
+
+        try:
+            kwds = kwds + other_kw_field
+        except TypeError:
+            if other_kw_field:
+                # If other_kw_field is a truthy value then
+                # kwds must be Falsey (empty) so we can just replace it
+                kwds = other_kw_field
+        # End try
+
         abstract = record.get('AB', None)
 
         if kwds:
@@ -19,7 +42,7 @@ def search_records(records, keywords, threshold=60.0):
                 tmp = [kw.lower() for kw in kwds]
                 combinations = [(a, b) for a in keywords for b in tmp]
                 for kwi, kw in combinations:
-                    if sims.string_match(kwi, kw) > threshold:
+                    if sims.string_match(kwi, kw) >= threshold:
                         if record not in matches:
                             matches.add(record)
                     # End if
@@ -89,7 +112,7 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
         criteria_kws = keyword_criteria[criteria]
         search_results = search_records(
             records, criteria_kws, threshold=threshold)
-        ind_recs, summary = keyword_matches(search_results, criteria_kws, 95.0)
+        ind_recs, summary = keyword_matches(search_results, criteria_kws, threshold)
 
         criteria_matches[criteria] = ind_recs
         criteria_summary[criteria] = summary
@@ -221,7 +244,7 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
             tmp = au_i.split(' ')[0].split(',')[0].lower()
             inside = tmp in au.lower()
             if inside:
-                similar = sims.string_match(au, au_i) > threshold
+                similar = sims.string_match(au, au_i) >= threshold
                 if similar:
                     matching_pubs[au_i].add(rec)
                 # End if
