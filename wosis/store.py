@@ -1,6 +1,6 @@
 import hashlib
 
-from .convert import rec_to_df
+from .convert import rc_to_df
 import wos_parser
 import json
 
@@ -37,7 +37,7 @@ def export_representative_file(records, retrieval_date, data_fn='../data/repset.
     * retrieval_date : str, Date of retrieval
     * data_fn : str, folder and filename to export data to (folder must exist first!)
     """
-    repset_df = rec_to_df(records)
+    repset_df = rc_to_df(records)
 
     assert len(repset_df.id.unique()) == len(repset_df.id), "Duplicate records found!"
 

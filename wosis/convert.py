@@ -25,7 +25,7 @@ def extract_recs(id_list, mk_rec, name=None):
 
 
 def rec_to_df(recs, extra_cols=None):
-    """Convert the given Metaknowledge RecordCollection to a Pandas DataFrame
+    """Deprecated function. Use `rc_to_df()` instead!
 
     Parameters
     ==========
@@ -36,6 +36,25 @@ def rec_to_df(recs, extra_cols=None):
     ==========
     * Pandas DataFrame
     """
-    df = pd.DataFrame(recs.forNLP(extraColumns=["AU", "SO", "DE", "DOI"]))
-    return df
+    import warnings
+    warnings.warn("Deprecated function `rec_to_df` - use `rc_to_df()` instead!", DeprecationWarning)
+    return rc_to_df(recs, extra_cols)
 # End rec_to_df()
+
+
+def rc_to_df(recs, extra_cols=None):
+    """Convert the given Metaknowledge RecordCollection to a Pandas DataFrame.
+
+    Parameters
+    ==========
+    * rec : Metaknowledge RecordCollection
+    * extra_cols : list[str], column names to extract given as RIS field codes. If `None` extracts all relevant fields.
+
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    if not extra_cols:
+        extra_cols = ["AU", "SO", "DE", "DOI"]
+    df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols))
+    return df
