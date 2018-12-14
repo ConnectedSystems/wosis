@@ -401,7 +401,9 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
     Parameters
     ==========
     * topic_summaries : list[tuple], of topics based on the output of `wosis.analysis.keyword_matches()`
-    * total_rc : RecordCollection, collection used to calculate topic proportion relative to the corpora.
+    * total_rc : RecordCollection or None, collection used to calculate topic proportion relative to the corpora.
+                 If `None`, plots number of publications. Defaults to None.
+    * title : str, title for plot
 
     Returns
     ==========
@@ -424,6 +426,7 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
 
     ax = None
     alpha_val = 0.7 if len(topic_summaries) > 1 else 1.0
+    plt.title(title)
     for topic in topic_summaries:
         rcs, summary = topic
         if isinstance(rcs, dict):
