@@ -1,10 +1,32 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from functools import wraps
+from functools import wraps, reduce
 from matplotlib.ticker import MaxNLocator
 
 from .search import get_unique_kw_titles
+from wosis.convert import rc_to_df
+
+
+def _truncate_string(string, delimiter="|", near=21):
+    """The given string to the nearest delimiter, and add an ellipsis.
+
+    Parameter
+    =========
+    * string : str, string to truncate
+    * delimiter : str, the character used as a delimiter
+    * near : int, find the nearest delimiter beyond this index position
+
+    Returns
+    =========
+    * str, truncated string
+    """
+    last_bar_pos = string.rfind("|")
+    if last_bar_pos > near:
+        truncated_bar_pos = string.find("|", near)
+        string = string[:truncated_bar_pos+1] + ' ...'
+    return string
+# End _truncate_string()
 
 
 def plot_saver(func):
@@ -62,7 +84,8 @@ def plot_pub_trend(search_results, title=None, no_log_scale=False):
     min_year, max_year = num_pubs.index.min(), num_pubs.index.max()
     idx = pd.period_range(min_year, max_year, freq='Y')
 
-    num_pubs = pd.DataFrame({'count': [num_pubs.loc[i, 'count'] if i in num_pubs.index else 0 for i in idx.year]},
+    num_pubs = pd.DataFrame({'count': [num_pubs.loc[i, 'count']
+                                       if i in num_pubs.index else 0 for i in idx.year]},
                             index=idx)
 
     fig, axes = plt.subplots(1)
@@ -131,8 +154,7 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
     num_pubs = yearly.count().sort_index()
     kw_trend = pd.DataFrame({'year': time_series['year'], 'count': num_kwds}).groupby(
         'year').sum().sort_index()
-    avg_kw_per_pub = (kw_trend.loc[:, 'count'] /
-                      num_pubs.loc[:, 'count']).to_frame()
+    avg_kw_per_pub = (kw_trend.loc[:, 'count'] / num_pubs.loc[:, 'count']).to_frame()
 
     # Fill in the missing years
     min_year, max_year = kw_trend.index.min(), kw_trend.index.max()
@@ -370,3 +392,56 @@ See `wosis.analysis.search.collate_keyword_criteria_matches`'
 
     return ax.get_figure()
 # End plot_criteria_trend()
+
+
+@plot_saver
+def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
+    """Plot the trends of topics over time.
+
+    Parameters
+    ==========
+    * topic_summaries : list[tuple], of topics based on the output of `wosis.analysis.keyword_matches()`
+    * total_rc : RecordCollection, collection used to calculate topic proportion relative to the corpora.
+
+    Returns
+    ==========
+    * Matplotlib plot object
+
+    See Also
+    ==========
+    * wosis.analysis.keyword_matches()
+    """
+    if total_rc:
+        rc = pd.DataFrame(total_rc.timeSeries('year'))
+        rc = rc.set_index('year', drop=True)
+        rc = rc['count']
+        y_label = 'Perc. of Corpora (%)'
+        mod = 100.0
+    else:
+        rc = 1
+        mod = 1
+        y_label = 'Num. Publications'
+
+    ax = None
+    alpha_val = 0.7 if len(topic_summaries) > 1 else 1.0
+    for topic in topic_summaries:
+        rcs, summary = topic
+        if isinstance(rcs, dict):
+            rcs = reduce(lambda x, y: x + y, rcs.values())
+
+        label = " | ".join(summary.keys())
+        label = _truncate_string(label, "|", 21)
+
+        df = pd.DataFrame(rcs.timeSeries('year'))
+        df = df.set_index('year', drop=True)
+
+        ax = ((df['count'] / rc) * mod).plot(legend=True, ax=ax, label=label, style='-o', alpha=alpha_val)
+    # End for
+
+    plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+    # force y-axis to use integer values
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_ylabel(y_label)
+
+    return ax.get_figure()
