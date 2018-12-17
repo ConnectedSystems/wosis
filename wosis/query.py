@@ -20,7 +20,7 @@ import logging
 
 
 __all__ = ['load_config', 'build_query', 'query', 'grab_records',
-           'grab_cited_works', 'get_citing_works', 'load_query_results']
+           'grab_cited_works', 'get_citing_works', 'load_query_results', 'get_num_citations']
 
 
 # suppress output from suds which gets really annoying
@@ -393,13 +393,55 @@ def get_citing_works(wos_id, config):
     ==========
     * Metaknowledge RecordCollection
     """
-    raise UnimplementedError("This method is not yet finished")
+    raise NotImplementedError("This method is not yet finished")
     with wos.WosClient(user=config['user'], password=config['password']) as client:
         pass
         # client.
     # End with
-
 # End get_citing_works()
+
+
+def get_num_citations(records, config):
+    """Get the number of citations for a given WoS record.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * config : dict, config settings
+
+    Returns
+    ==========
+    * dict, number of citations found for each publication
+    """
+    cites = {}
+    with wos.WosClient(user=config['user'], password=config['password']) as client:
+        for rec in records:
+            probe = client.citingArticles(wos_id, count=1)
+            num_matches = probe.recordsFound
+            cites[rec.get('id')] = num_matches
+
+    return cites
+
+
+def get_num_citations(wos_id, config):
+    """Get the number of citations for a given WoS record.
+
+    Parameters
+    ==========
+    * client : WoS Client
+    * wos_id : str, Web of Science ID
+    * config : dict, config settings
+
+    Returns
+    ==========
+    * int, number of citations found for the given publication
+    """
+    with wos.WosClient(user=config['user'], password=config['password']) as client:
+        probe = client.citingArticles(wos_id, count=1)
+        num_matches = probe.recordsFound
+
+    return num_matches
+# End get_num_citations()
 
 
 def _handle_webfault(client, ex, min_period=3):
