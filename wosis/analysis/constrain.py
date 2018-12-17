@@ -3,13 +3,28 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
+from wosis import rec_to_df
 
 
-def display_topics(model, feature_names, num_top_words=10):
+def get_topic_words(model, feature_names, num_top_words=10):
+    res = {}
     for topic_idx, topic in enumerate(model.components_):
         match = " ".join([feature_names[i]
                           for i in topic.argsort()[:-num_top_words - 1:-1]])
-        print("Topic {}: {}".format(topic_idx + 1, match))
+        res[topic_idx+1] = match
+
+    return res
+
+
+def display_topics(model, feature_names, num_top_words=10):
+    matches = get_topic_words(model, feature_names, num_top_words)
+    for i in matches:
+        print("Topic {}: {}".format(i, matches[i]))
+
+    # for topic_idx, topic in enumerate(model.components_):
+    #     match = " ".join([feature_names[i]
+    #                       for i in topic.argsort()[:-num_top_words - 1:-1]])
+    #     print("Topic {}: {}".format(topic_idx + 1, match))
 # End display_topics()
 
 
@@ -28,8 +43,10 @@ def find_topics(corpora_df, model_type='NMF', num_topics=10, num_features=1000, 
     ==========
     * tuple, topic model and feature names
     """
+    if 'metaknowledge' in str(type(corpora_df)).lower():
+        corpora_df = rec_to_df(corpora_df)
     combined_kws = corpora_df['DE'].str.split("|").tolist()
-    corpora_df["kws"] = [" ".join(i) for i in combined_kws]
+    corpora_df.loc[:, "kws"] = [" ".join(i) for i in combined_kws]
     docs = corpora_df['title'] + corpora_df['abstract'] + corpora_df["kws"]
 
     if model_type is 'NMF':
