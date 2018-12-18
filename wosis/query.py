@@ -1,12 +1,14 @@
 import os
 from os.path import join as pj
 
+import wosis
 import wosis.store as store
 import wos_parser
 import wos
 import pickle
 
 import metaknowledge as mk
+import pandas as pd
 
 import time
 import warnings
@@ -143,6 +145,8 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
         print("Got {} records".format(num_ris_records))
 
         md5_hash = store.create_query_hash(query_str)
+        if timesan:
+            md5_hash = "{}_{}-{}".format(md5_hash, timespan['begin'], timespan['end'])
         hash_to_query.update({md5_hash: query_str})
         tmp_file = pj(tmp_dir, md5_hash)
         prev_q_exists = os.path.isfile('{}.txt'.format(tmp_file))
@@ -402,7 +406,7 @@ def get_citing_works(wos_id, config):
 
 
 def get_num_citations(records, config):
-    """Get the number of citations for a given WoS record.
+    """Send query to get the number of citations for a given WoS record.
 
     Parameters
     ==========
@@ -411,37 +415,29 @@ def get_num_citations(records, config):
 
     Returns
     ==========
-    * dict, number of citations found for each publication
+    * Pandas DataFrame, publication details with citations
     """
     cites = {}
     with wos.WosClient(user=config['user'], password=config['password']) as client:
-        for rec in records:
-            probe = client.citingArticles(wos_id, count=1)
-            num_matches = probe.recordsFound
-            cites[rec.get('id')] = num_matches
+        for rec in tqdm(records):
+            wos_id = rec.get('id')
+            try:
+                probe = client.citingArticles(wos_id, count=1)
+            except Exception as e:
+                _handle_webfault(client, e)
+                probe = client.citingArticles(wos_id, count=1)
+            # End try
 
-    return cites
+            cites[wos_id] = probe.recordsFound
+        # End for
 
+    for wos_id in cites:
+        rec = records.getID(wos_id)
+        rec.TC = cites[wos_id]
 
-def get_num_citations(wos_id, config):
-    """Get the number of citations for a given WoS record.
-
-    Parameters
-    ==========
-    * client : WoS Client
-    * wos_id : str, Web of Science ID
-    * config : dict, config settings
-
-    Returns
-    ==========
-    * int, number of citations found for the given publication
-    """
-    with wos.WosClient(user=config['user'], password=config['password']) as client:
-        probe = client.citingArticles(wos_id, count=1)
-        num_matches = probe.recordsFound
-
-    return num_matches
-# End get_num_citations()
+    citations = pd.DataFrame({'Citations': list(cites.values()), "id": list(cites.keys())})
+    tmp_df = wosis.rc_to_df(records)
+    return (pd.merge(tmp_df, citations, on='id')).sort_values('Citations', ascending=False)
 
 
 def _handle_webfault(client, ex, min_period=3):
