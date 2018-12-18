@@ -437,7 +437,7 @@ def get_num_citations(records, config):
 
     citations = pd.DataFrame({'citations': list(cites.values()), "id": list(cites.keys())})
     tmp_df = wosis.rc_to_df(records)
-    return (pd.merge(tmp_df, citations, on='id')).sort_values('Citations', ascending=False)
+    return (pd.merge(tmp_df, citations, on='id')).sort_values('citations', ascending=False)
 
 
 def _handle_webfault(client, ex, min_period=3):
