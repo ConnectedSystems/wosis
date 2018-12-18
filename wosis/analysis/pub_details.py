@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def pub_citations(records):
-    """Get citations for each publication.
+    """Get number of times a reference is used in the corpora.
 
     Parameters
     ==========
@@ -19,6 +19,25 @@ def pub_citations(records):
 
     return paper_citations.sort_values(by='Citations', ascending=False)
 # End citations()
+
+
+def citations_of(records):
+    """Get number of times each paper is cited within the corpora.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    citations = {}
+    for pub_rec in records:
+        citations[pub_rec.get('title')] = len(records.localCitesOf(pub_rec.createCitation()))
+
+    res = pd.DataFrame({'Citations': list(citations.values())}, index=list(citations.keys()))
+    return res.sort_values(by='Citations', ascending=False)
 
 
 def author_citations(records):
