@@ -435,7 +435,7 @@ def get_num_citations(records, config):
         rec = records.getID(wos_id)
         rec.TC = cites[wos_id]
 
-    citations = pd.DataFrame({'Citations': list(cites.values()), "id": list(cites.keys())})
+    citations = pd.DataFrame({'citations': list(cites.values()), "id": list(cites.keys())})
     tmp_df = wosis.rc_to_df(records)
     return (pd.merge(tmp_df, citations, on='id')).sort_values('Citations', ascending=False)
 
