@@ -145,7 +145,7 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
         print("Got {} records".format(num_ris_records))
 
         md5_hash = store.create_query_hash(query_str)
-        if timesan:
+        if timespan:
             md5_hash = "{}_{}-{}".format(md5_hash, timespan['begin'], timespan['end'])
         hash_to_query.update({md5_hash: query_str})
         tmp_file = pj(tmp_dir, md5_hash)
