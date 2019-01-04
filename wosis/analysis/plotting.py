@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import seaborn as sns
 from functools import wraps, reduce
 from matplotlib.ticker import MaxNLocator
@@ -7,6 +8,31 @@ from matplotlib.ticker import MaxNLocator
 from .search import get_unique_kw_titles
 from wosis.convert import rc_to_df
 
+
+def plot_saver(func):
+    """Decorator to enable all plotting functions to save figures.
+    Figures are saved in `png` format at 300 dpi resolution.
+
+    Added Parameter
+    ================
+    * save_plot_fn : str, indicate path to save figure
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        save_plot_fn = kwargs.pop('save_plot_fn', None)
+        fig = func(*args, **kwargs)
+        plt.tight_layout()
+
+        if save_plot_fn:
+            if save_plot_fn.endswith('.png'):
+                save_plot_fn = save_plot_fn.strip('.png')
+
+            fig.savefig(save_plot_fn + '.png', format='png', dpi=300)
+        # End if
+    # End wrapper()
+
+    return wrapper
+# End plot_saver()
 
 def _truncate_string(string, delimiter="|", near=21):
     """The given string to the nearest delimiter, and add an ellipsis.
@@ -29,30 +55,17 @@ def _truncate_string(string, delimiter="|", near=21):
 # End _truncate_string()
 
 
-def plot_saver(func):
-    """Decorator to enable all plotting functions to save figures.
-    Figures are saved in `png` format at 300 dpi resolution.
+def _set_title(title, num_text):
+    """Determine title text and modified position."""
+    y_pos = 0.98
+    if title:
+        title = title + '\n' + num_text
+        y_pos = 1.08
+    else:
+        title = num_text
 
-    Added Parameter
-    ================
-    * save_plot_fn : str, indicate path to save figure
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        save_plot_fn = kwargs.pop('save_plot_fn', None)
-        fig = func(*args, **kwargs)
-
-        if save_plot_fn:
-            if save_plot_fn.endswith('.png'):
-                save_plot_fn = save_plot_fn.strip('.png')
-
-            plt.tight_layout()
-            fig.savefig(save_plot_fn + '.png', format='png', dpi=300)
-        # End if
-    # End wrapper()
-
-    return wrapper
-# End plot_saver()
+    return title, y_pos
+# End _set_title()
 
 
 @plot_saver
@@ -95,11 +108,9 @@ def plot_pub_trend(search_results, title=None, no_log_scale=False):
 
     pub_data = num_pubs.loc[:, 'count']
     num_text = "Total Number of Publications: {}".format(pub_data.sum())
-    if title:
-        title = title + '\n' + num_text
-    else:
-        title = num_text
-    plt.suptitle(title, fontsize='22')
+    
+    title, y_pos = _set_title(title, num_text)
+    plt.suptitle(title, fontsize='22', y=y_pos)
 
     tick_threshold = 11  # Hide every second year if number of years is above this
 
@@ -171,11 +182,9 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
     pub_data = num_pubs.loc[:, 'count']
     num_text = "Total Number of Publications: {}".format(pub_data.sum())
-    if title:
-        title = title + '\n' + num_text
-    else:
-        title = num_text
-    plt.suptitle(title, fontsize='22')
+
+    title, y_pos = _set_title(title, num_text)
+    plt.suptitle(title, fontsize='22', y=y_pos)
 
     avg_kw_per_pub.plot(kind='bar', figsize=(
         18, 6), rot=rot, ax=ax1, legend=False)
@@ -196,7 +205,7 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
     # force y-axis to use integer values
     ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
-    num_pubs.plot(kind='bar', ax=ax2, rot=rot, logy=log_form, legend=False)
+    ax2 = num_pubs.plot(kind='bar', ax=ax2, rot=rot, logy=log_form, legend=False)
 
     if len(num_pubs.index) > tick_threshold:
         ax2.set_xticks([i for i in range(0, len(num_pubs.index), 2)])
@@ -254,7 +263,6 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
     # force y-axis to use integer values
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-    plt.tight_layout()
     return ax.get_figure()
 # End plot_pub_per_kw()
 
@@ -304,7 +312,6 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
         plot_title += "\n{} out of {} ({:.2f}%)".format(subtotal, len(
             search_results), (subtotal / len(search_results)) * 100.0)
 
-    plt.tight_layout()
     ax = pubs_by_journal[0:top_n][::-
                                   1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(10, 6))
     ax.set_ylabel('')
