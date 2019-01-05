@@ -9,6 +9,11 @@ from sklearn.decomposition import NMF, LatentDirichletAllocation
 from wosis import rc_to_df
 from wosis.TopicResult import TopicResult
 
+import warnings
+from zipfile import BadZipfile
+
+__all__ = ['find_topics', 'remove_by_journals', 'remove_by_title', 'remove_empty_DOIs']
+
 # We lemmatize and stem words to homogenize similar content as much as possible
 lemmer = WordNetLemmatizer().lemmatize
 stemmer = SnowballStemmer('english').stem
@@ -34,8 +39,12 @@ def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, ver
     """
     if 'metaknowledge' in str(type(corpora)).lower():
         corpora_df = rc_to_df(corpora)
-        filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
-                                                           stemmer=_homogenize))
+        try:
+            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
+                                                            stemmer=_homogenize))
+        except BadZipfile:
+            warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
+            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
     elif 'dataframe' in str(type(corpora)).lower():
         corpora_df = corpora
 
@@ -94,33 +103,6 @@ def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
 
     return lda, trans, names
 # End LDA_cluster()
-
-
-def get_topic_by_id(topic_model, trans, topic_id, corpora_df):
-    """Get documents related to a topic id.
-
-    Parameters
-    ==========
-    * topic_id : int, Topic ID (starting from 1)
-
-    Returns
-    ==========
-    * Pandas DataFrame
-    """
-    doc_topic = topic_model.transform(trans)
-
-    doc_row_id = []
-    for n in range(doc_topic.shape[0]):
-        topic_most_pr = doc_topic[n].argmax()
-
-        if topic_most_pr == (topic_id - 1):
-            doc_row_id.append(n)
-    # End for
-
-    topic_docs = corpora_df.iloc[doc_row_id, :]
-
-    return topic_docs
-# End get_topic_by_id()
 
 
 def remove_by_journals(corpora, unrelated_journals, verbose=True):
