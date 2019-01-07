@@ -66,6 +66,7 @@ def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, ver
         res.display_topics()
 
     return res
+
 # End find_topics()
 
 

@@ -62,3 +62,5 @@ tutorial/config\.yml
 data/
 
 tutorial/tmp/
+
+tutorial/\.ipynb_checkpoints/
