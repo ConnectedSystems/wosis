@@ -431,8 +431,8 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
         mod = 1
         y_label = 'Num. Publications'
 
-    ax = None
     alpha_val = 0.7 if len(topic_summaries) > 1 else 1.0
+    fig, ax = plt.subplots(figsize=(12,6))
     plt.title(title)
     for topic in topic_summaries:
         rcs, summary = topic
@@ -440,7 +440,7 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
             rcs = reduce(lambda x, y: x + y, rcs.values())
 
         label = " | ".join(summary.keys())
-        label = _truncate_string(label, "|", 21)
+        label = _truncate_string(label, "|", 11)
 
         df = pd.DataFrame(rcs.timeSeries('year'))
         df = df.set_index('year', drop=True)
@@ -450,7 +450,8 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
 
     plt.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
 
-    # force y-axis to use integer values
+    # force axis to use integer values
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_ylabel(y_label)
 
