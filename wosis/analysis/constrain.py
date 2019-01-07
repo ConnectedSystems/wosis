@@ -1,34 +1,28 @@
 import pandas as pd
 
-from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import SnowballStemmer
+from nltk.stem import WordNetLemmatizer
+
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
-from wosis import rec_to_df
+
+from wosis import rc_to_df
+from wosis.TopicResult import TopicResult
+
+import warnings
+from zipfile import BadZipfile
+
+__all__ = ['find_topics', 'remove_by_journals', 'remove_by_title', 'remove_empty_DOIs']
+
+# We lemmatize and stem words to homogenize similar content as much as possible
+lemmer = WordNetLemmatizer().lemmatize
+stemmer = SnowballStemmer('english').stem
+
+def _homogenize(word):
+    return stemmer(lemmer(word))
 
 
-def get_topic_words(model, feature_names, num_top_words=10):
-    res = {}
-    for topic_idx, topic in enumerate(model.components_):
-        match = " ".join([feature_names[i]
-                          for i in topic.argsort()[:-num_top_words - 1:-1]])
-        res[topic_idx+1] = match
-
-    return res
-
-
-def display_topics(model, feature_names, num_top_words=10):
-    matches = get_topic_words(model, feature_names, num_top_words)
-    for i in matches:
-        print("Topic {}: {}".format(i, matches[i]))
-
-    # for topic_idx, topic in enumerate(model.components_):
-    #     match = " ".join([feature_names[i]
-    #                       for i in topic.argsort()[:-num_top_words - 1:-1]])
-    #     print("Topic {}: {}".format(topic_idx + 1, match))
-# End display_topics()
-
-
-def find_topics(corpora_df, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
+def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
     """Using one of several approaches, try to identify topics to help constrain search space.
 
     Parameters
@@ -41,23 +35,37 @@ def find_topics(corpora_df, model_type='NMF', num_topics=10, num_features=1000, 
 
     Returns
     ==========
-    * tuple, topic model and feature names
+    * tuple, TopicResults object
     """
-    if 'metaknowledge' in str(type(corpora_df)).lower():
-        corpora_df = rec_to_df(corpora_df)
+    if 'metaknowledge' in str(type(corpora)).lower():
+        corpora_df = rc_to_df(corpora)
+        try:
+            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
+                                                            stemmer=_homogenize))
+        except BadZipfile:
+            warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
+            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
+    elif 'dataframe' in str(type(corpora)).lower():
+        corpora_df = corpora
+
     combined_kws = corpora_df['DE'].str.split("|").tolist()
     corpora_df.loc[:, "kws"] = [" ".join(i) for i in combined_kws]
     docs = corpora_df['title'] + corpora_df['abstract'] + corpora_df["kws"]
 
     if model_type is 'NMF':
-        return NMF_cluster(docs, num_topics, num_features, verbose=verbose)
+        mod, trans, names = NMF_cluster(docs, num_topics, num_features)
     elif model_type is 'LDA':
-        return LDA_cluster(docs, num_topics, num_features, verbose=verbose)
+        mod, trans, names = LDA_cluster(docs, num_topics, num_features)
     else:
         raise ValueError("Unknown or unimplemented topic modelling approach!")
     # End if
 
-    raise ValueError("Unknown error occurred!")
+    res = TopicResult(mod, trans, names, corpora_df)
+
+    if verbose:
+        res.display_topics()
+
+    return res
 # End find_topics()
 
 
@@ -80,9 +88,6 @@ def NMF_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
     nmf = NMF(n_components=num_topics, random_state=1, alpha=.1,
               l1_ratio=.5, init='nndsvd', max_iter=50).fit(trans)
 
-    if verbose:
-        display_topics(nmf, names, num_top_words=10)
-
     return nmf, trans, names
 # End NMF_cluster()
 
@@ -94,38 +99,9 @@ def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
     # Run LDA
     lda = LatentDirichletAllocation(n_components=num_topics, max_iter=50,
                                     learning_method='online', learning_offset=50., random_state=0).fit(trans)
-    if verbose:
-        display_topics(lda, names, num_top_words=10)
 
     return lda, trans, names
 # End LDA_cluster()
-
-
-def get_topic_by_id(topic_model, trans, topic_id, corpora_df):
-    """Get documents related to a topic id.
-
-    Parameters
-    ==========
-    * topic_id : int, Topic ID (starting from 1)
-
-    Returns
-    ==========
-    * Pandas DataFrame
-    """
-    doc_topic = topic_model.transform(trans)
-
-    doc_row_id = []
-    for n in range(doc_topic.shape[0]):
-        topic_most_pr = doc_topic[n].argmax()
-
-        if topic_most_pr == (topic_id - 1):
-            doc_row_id.append(n)
-    # End for
-
-    topic_docs = corpora_df.iloc[doc_row_id, :]
-
-    return topic_docs
-# End get_topic_by_id()
 
 
 def remove_by_journals(corpora, unrelated_journals, verbose=True):
