@@ -64,3 +64,5 @@ data/
 tutorial/tmp/
 
 tutorial/\.ipynb_checkpoints/
+
+\.vscode/
