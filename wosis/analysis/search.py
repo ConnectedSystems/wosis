@@ -8,16 +8,20 @@ import pandas as pd
 def search_records(records, keywords, threshold=60.0):
     """Search records for a given set of keywords.
 
+    Keywords will be transformed to lower case.
+
     Parameters
     ==========
     * records : Metaknowledge RecordCollection
-    * keywords : set, of keywords
+    * keywords : set or list, of keywords. Will be transformed to lowercase
     * threshold : float, similarity must be equal to or above this percentage threshold
 
     Returns
     ==========
     * Metaknowledge RecordCollection, of matched records
     """
+    keywords = set([kw.lower() for kw in keywords])
+
     matches = mk.RecordCollection()
     for record in records:
         kwds = record.get('DE', None)
@@ -35,11 +39,12 @@ def search_records(records, keywords, threshold=60.0):
         abstract = record.get('AB', None)
 
         if kwds:
-            subset = keywords.intersection(set([kw.lower() for kw in kwds]))
+            tmp = [kw.lower() for kw in kwds]
+
+            subset = keywords.intersection(set(tmp))
             if len(subset) > 0:
                 matches.add(record)
             else:
-                tmp = [kw.lower() for kw in kwds]
                 combinations = [(a, b) for a in keywords for b in tmp]
                 for kwi, kw in combinations:
                     if sims.string_match(kwi, kw) >= threshold:
