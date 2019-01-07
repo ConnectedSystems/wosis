@@ -356,10 +356,10 @@ def plot_journal_pub_trend(search_results, top_n=10):
     pubs_across_time = pubs_across_time.sort_index()
 
     axes = pubs_across_time.plot(subplots=True, figsize=(
-        6, 8), layout=(10, 1), sharey=True, legend=False)
+        10, 8), layout=(top_n, 1), sharey=True, legend=False)
 
     # Add legends (right hand side, outside of figure)
-    [ax[0].legend([so], fontsize=10, loc='center left', bbox_to_anchor=(1, 0.5))
+    [ax[0].legend([so], fontsize=10, loc='center left', bbox_to_anchor=(1.0, 0.5))
      for ax, so in zip(axes, pubs_across_time.columns)]
 
     return axes[0][0].get_figure()
