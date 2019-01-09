@@ -1,9 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import seaborn as sns
-from functools import wraps, reduce
 from matplotlib.ticker import MaxNLocator
+
+import seaborn as sns
+
+from functools import wraps, reduce
 
 from .search import get_unique_kw_titles
 from wosis.convert import rc_to_df
@@ -27,12 +29,14 @@ def plot_saver(func):
             if save_plot_fn.endswith('.png'):
                 save_plot_fn = save_plot_fn.strip('.png')
 
-            fig.savefig(save_plot_fn + '.png', format='png', dpi=300)
+            fig.savefig(save_plot_fn + '.png', format='png', 
+                        dpi=300, bbox_inches='tight')
         # End if
     # End wrapper()
 
     return wrapper
 # End plot_saver()
+
 
 def _truncate_string(string, delimiter="|", near=21):
     """The given string to the nearest delimiter, and add an ellipsis.
@@ -313,7 +317,7 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
             search_results), (subtotal / len(search_results)) * 100.0)
 
     ax = pubs_by_journal[0:top_n][::-
-                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(10, 6))
+                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(12, 6))
     ax.set_ylabel('')
 
     if annotate:
@@ -356,7 +360,11 @@ def plot_journal_pub_trend(search_results, top_n=10):
     pubs_across_time = pubs_across_time.sort_index()
 
     axes = pubs_across_time.plot(subplots=True, figsize=(
-        10, 8), layout=(top_n, 1), sharey=True, legend=False)
+        12, 10), layout=(top_n, 1), sharey=True, legend=False)
+
+    # force x-axis to use integer values (years)
+    for ax in axes:
+        ax[0].xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Add legends (right hand side, outside of figure)
     [ax[0].legend([so], fontsize=10, loc='center left', bbox_to_anchor=(1.0, 0.5))
