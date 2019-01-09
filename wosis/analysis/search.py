@@ -4,6 +4,8 @@ import itertools as it
 from functools import reduce
 import pandas as pd
 
+from wosis.KeywordMatch import KeywordMatch
+
 
 def search_records(records, keywords, threshold=60.0):
     """Search records for a given set of keywords.
@@ -65,7 +67,7 @@ def search_records(records, keywords, threshold=60.0):
         # End if
     # End for
 
-    matches.name = '{} - {}'.format(keywords, len(matches))
+    matches.name = '{}'.format(keywords)
 
     return matches
 # End search_records()
@@ -82,16 +84,15 @@ def keyword_matches(records, keywords, threshold=60.0):
 
     Returns
     ==========
-    * tuple[dict], matching records by keyword, and {keyword: number of matching records}
+    * dict, matching records by keyword
     """
     matching_records = {}
-    summary = {}
     for kw in keywords:
         matching_records[kw] = search_records(records, set([kw, ]), threshold)
-        summary[kw] = len(matching_records[kw])
     # End for
 
-    return matching_records, summary
+    return KeywordMatch(matching_records)
+
 # End keyword_matches()
 
 
@@ -108,34 +109,31 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
 
     Returns
     ==========
-    * tuple[dict], matching records by keyword, and
+    * dict, matching records by keyword, and
                    {keyword: number of matching records}
     """
     criteria_matches = {}
-    criteria_summary = {}
     for criteria in list(keyword_criteria):
         criteria_kws = keyword_criteria[criteria]
         search_results = search_records(
             records, criteria_kws, threshold=threshold)
-        ind_recs, summary = keyword_matches(search_results, criteria_kws, threshold)
+        kw_match = keyword_matches(search_results, criteria_kws, threshold)
 
-        criteria_matches[criteria] = ind_recs
-        criteria_summary[criteria] = summary
+        criteria_matches[criteria] = kw_match
     # End for
 
-    return criteria_matches, criteria_summary
+    return criteria_matches
 # End keyword_matches_by_criteria()
 
 
-def collate_keyword_criteria_matches(records, criteria_records):
+def collate_keyword_criteria_matches(records, criteria_matches):
     """Takes dictionary of keyword matches by criteria and collates into
     a single DataFrame.
 
     Parameters
     ==========
     * records : Metaknowledge record collection
-    * criteria_records : dict, of sets with each set being a collection
-                               of keywords
+    * criteria_records : dict, of KeywordMatch
 
     Returns
     ==========
@@ -146,16 +144,16 @@ def collate_keyword_criteria_matches(records, criteria_records):
     ==========
     * keyword_matches_by_criteria()
     """
-    for crit in criteria_records:
-        criteria_records[crit] = reduce(
-            lambda x, y: x + y, list(criteria_records[crit].values()))
+    criteria_records = {}
+    for cm in criteria_matches:
+        criteria_records[cm] = criteria_matches[cm].combine_recs()
 
     corpora_df = pd.DataFrame(records.forNLP())
     corpora_df['num_criteria_match'] = 0
 
     for wos_id in corpora_df['id']:
-        for crit in criteria_records:
-            if criteria_records[crit].containsID(wos_id):
+        for cm in criteria_records:
+            if criteria_records[cm].containsID(wos_id):
                 corpora_df.loc[corpora_df['id'] ==
                                wos_id, 'num_criteria_match'] += 1
             # End if

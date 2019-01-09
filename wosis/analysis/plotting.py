@@ -402,12 +402,12 @@ See `wosis.analysis.search.collate_keyword_criteria_matches`'
 
 
 @plot_saver
-def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
+def plot_topic_trend(topics, total_rc=None, title='Topic Trend'):
     """Plot the trends of topics over time.
 
     Parameters
     ==========
-    * topic_summaries : list[tuple], of topics based on the output of `wosis.analysis.keyword_matches()`
+    * topics : list[KeywordMatch], KeywordMatch object of topics based on the output of `wosis.analysis.keyword_matches()`
     * total_rc : RecordCollection or None, collection used to calculate topic proportion relative to the corpora.
                  If `None`, plots number of publications. Defaults to None.
     * title : str, title for plot
@@ -431,15 +431,18 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
         mod = 1
         y_label = 'Num. Publications'
 
-    alpha_val = 0.7 if len(topic_summaries) > 1 else 1.0
+    alpha_val = 0.7 if len(topics) > 1 else 1.0
     fig, ax = plt.subplots(figsize=(12,6))
     plt.title(title)
-    for topic in topic_summaries:
-        rcs, summary = topic
-        if isinstance(rcs, dict):
-            rcs = reduce(lambda x, y: x + y, rcs.values())
-
-        label = " | ".join(summary.keys())
+    for kwm in topics:
+        if hasattr(kwm, 'recs'):
+            rcs = kwm.combine_recs()
+            label = " | ".join(kwm.recs.keys())
+        else:
+            # assume it is a metaknowledge object
+            rcs = kwm
+            label = rcs.name
+        
         label = _truncate_string(label, "|", 11)
 
         df = pd.DataFrame(rcs.timeSeries('year'))
@@ -456,3 +459,4 @@ def plot_topic_trend(topic_summaries, total_rc=None, title='Topic Trend'):
     ax.set_ylabel(y_label)
 
     return ax.get_figure()
+# End plot_topic_trend()
