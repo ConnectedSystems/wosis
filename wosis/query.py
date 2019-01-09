@@ -40,7 +40,7 @@ def load_config(config_file):
     ==========
     * wos_config : dict, of 'user' and 'password' key-values
     """
-    with open("config.yml") as config:
+    with open(config_file) as config:
         wos_config = yaml.load(config)
         wos_config = wos_config['wos']
 
