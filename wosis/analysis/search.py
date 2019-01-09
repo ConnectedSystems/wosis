@@ -262,6 +262,29 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
 # End find_pubs_by_authors()
 
 
+def find_pubs_by_journal(records, journal_list):
+    """Get publications in specific journals
+    
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection, representing corpora
+    * journal_list : list, of journals (has to be exact match)
+
+    Returns
+    ==========
+    dict[mk.RecordCollection]
+    """
+    journal_pubs = {}
+    for rec in records:
+        j_name = rec.get('SO')
+        if j_name in journal_list:
+            journal_pubs[j_name] = journal_pubs.get(j_name, mk.RecordCollection(name=j_name))
+            journal_pubs[j_name].add(rec)
+    
+    return journal_pubs
+# End find_pubs_by_journal()
+
+
 def preview_matches(search_results, num=5, limit_abstract=None):
     """Preview items in results.
 
