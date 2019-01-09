@@ -317,7 +317,7 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
             search_results), (subtotal / len(search_results)) * 100.0)
 
     ax = pubs_by_journal[0:top_n][::-
-                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(12, 6))
+                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(12, 6), color='blue')
     ax.set_ylabel('')
 
     if annotate:
@@ -331,7 +331,7 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
 
 
 @plot_saver
-def plot_journal_pub_trend(search_results, top_n=10):
+def plot_journal_pub_trend(search_results, title='Journal Publication Trend', top_n=10):
     """Plot publications across time by journal.
 
     Parameters
@@ -361,6 +361,8 @@ def plot_journal_pub_trend(search_results, top_n=10):
 
     axes = pubs_across_time.plot(subplots=True, figsize=(
         12, 10), layout=(top_n, 1), sharey=True, legend=False)
+
+    plt.suptitle(title, fontsize='22', y=1.02)
 
     # force x-axis to use integer values (years)
     for ax in axes:
