@@ -64,6 +64,16 @@ def author_citations(records):
 
 
 def link_to_pub(records):
+    """Adds link to publication.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection or DataFrame
+
+    Returns
+    ==========
+    * Pandas DataFrame with additional column ('DOI link')
+    """
     if 'metaknowledge' in str(type(records)):
         recs = records.forNLP(extraColumns=["AU", "SO", "DE", 'DOI'], lower=False, removeNonWords=False)
         df = pd.DataFrame(recs)
