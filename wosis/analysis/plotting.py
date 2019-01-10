@@ -470,3 +470,29 @@ def plot_topic_trend(topics, total_rc=None, title='Topic Trend'):
 
     return ax.get_figure()
 # End plot_topic_trend()
+
+
+@plot_saver
+def plot_citations(citation_df, top_n=10, plot_title='Citations', annotate=True):
+    """Plot citations per top `n` papers.
+
+    Parameters
+    ==========
+    * citation_df : DataFrame, with citations column
+    * top_n : int, top `n` papers to show
+    * annotate : bool, show number of citations. Defaults to True.
+
+    Returns
+    ==========
+    * Matplotlib plot object
+    """
+    citation_df.index = citation_df['title'].str[0:25] + "..."
+    ax = citation_df['citations'][:top_n][::-1].plot(kind='barh', color='blue', title=plot_title, fontsize=10, figsize=(10,6))
+
+    if annotate:
+        # Annotate number above bar
+        for p in ax.patches:
+            ax.annotate("{}".format(p.get_width()),
+                        (p.get_width() + 0.01, p.get_y()), fontsize=12)
+
+    return ax.get_figure()
