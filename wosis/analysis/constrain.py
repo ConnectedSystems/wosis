@@ -1,7 +1,9 @@
 import pandas as pd
 
-from nltk.stem import SnowballStemmer
-from nltk.stem import WordNetLemmatizer
+import nltk
+from nltk.stem import SnowballStemmer, WordNetLemmatizer
+
+from rake_nltk import Metric, Rake
 
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
@@ -22,6 +24,20 @@ def _homogenize(word):
     return stemmer(lemmer(word))
 
 
+def _ensure_df(corpora):
+    if 'metaknowledge' in str(type(corpora)).lower():
+        try:
+            corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
+                                                              stemmer=_homogenize))
+        except BadZipfile:
+            warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
+            corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
+    elif 'dataframe' in str(type(corpora)).lower():
+        corpora_df = corpora
+
+    return corpora_df
+
+
 def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
     """Using one of several approaches, try to identify topics to help constrain search space.
 
@@ -37,16 +53,7 @@ def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, ver
     ==========
     * tuple, TopicResults object
     """
-    if 'metaknowledge' in str(type(corpora)).lower():
-        corpora_df = rc_to_df(corpora)
-        try:
-            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
-                                                            stemmer=_homogenize))
-        except BadZipfile:
-            warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
-            filtered_corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
-    elif 'dataframe' in str(type(corpora)).lower():
-        corpora_df = corpora
+    corpora_df = _ensure_df(corpora)
 
     combined_kws = corpora_df['DE'].str.split("|").tolist()
     corpora_df.loc[:, "kws"] = [" ".join(i) for i in combined_kws]
@@ -106,31 +113,33 @@ def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
 
 
 def remove_by_journals(corpora, unrelated_journals, verbose=True):
-    # TODO : Apply this to the RecordCollection instead of DF
+    corpora_df = _ensure_df(corpora)
+
     for unrelated in unrelated_journals:
-        count_removed = corpora.loc[corpora['SO'].str.contains(
+        count_removed = corpora_df.loc[corpora_df['SO'].str.contains(
             unrelated), 'id'].count()
         if verbose:
             print("{}: {}".format(unrelated, count_removed))
-        corpora = corpora.drop(corpora.loc[corpora['SO'].str.contains(unrelated)].index,
+        corpora_df = corpora_df.drop(corpora_df.loc[corpora_df['SO'].str.contains(unrelated)].index,
                                axis=0)
-    return corpora
+    return corpora_df
 # End remove_by_journals()
 
 
 def remove_by_title(corpora, unrelated_titles, verbose=True):
-    # TODO : Apply this to the RecordCollection instead of D
+    corpora_df = _ensure_df(corpora)
+
     for unrelated in unrelated_titles:
-        count_removed = corpora.loc[corpora['title'].str.contains(
+        count_removed = corpora_df.loc[corpora_df['title'].str.contains(
             unrelated), 'id'].count()
 
         if verbose:
             print("{}: {}".format(unrelated, count_removed))
 
-        corpora = corpora.drop(
-            corpora.loc[corpora['title'].str.contains(unrelated)].index, axis=0)
+        corpora_df = corpora_df.drop(
+            corpora_df.loc[corpora_df['title'].str.contains(unrelated)].index, axis=0)
 
-    return corpora
+    return corpora_df
 # End remove_by_title()
 
 
@@ -147,12 +156,70 @@ def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
     ==========
     * tuple[Pandas DataFrame], Filtered DataFrame and DataFrame of removed records
     """
-    to_be_removed = corpora.loc[corpora['DOI'] == '', :]
+    corpora_df = _ensure_df(corpora)
+    to_be_removed = corpora_df.loc[corpora['DOI'] == '', :]
     if verbose:
         count_empty = to_be_removed['DOI'].count()
         print("Removing {} records with no DOIs".format(count_empty))
 
-    filtered = corpora.loc[corpora['DOI'] != '', :]
+    filtered = corpora_df.loc[corpora_df['DOI'] != '', :]
 
     return filtered, to_be_removed
 # End remove_empty_DOIs()
+
+
+def find_phrases(corpora, min_len=2, max_len=None, lang='english'):
+    """Find interesting phrases in given corpora.
+    """
+    if 'metaknowledge' in str(type(corpora)).lower():
+        corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"], 
+                                                 removeCopyright=True))
+    else:
+        corpora_df = corpora.copy()
+
+    if hasattr(find_phrases, 'rake'):
+        rake = find_phrases.rake
+    else:
+        from nltk.corpus import stopwords
+        # rake = Rake(stopwords=stopwords.words(lang), language=lang)
+        rake = Rake(min_length=min_len, max_length=max_len, language=lang)
+        find_phrases.rake = rake
+    # End if
+
+    phrases = corpora_df['abstract'].apply(rake.extract_keywords_from_text, axis=1)
+
+    rake.extract_keywords_from_text()
+
+
+def rabby_find_phrase(corpus):
+    """Implementation based on paper by Rabby et al. (2018)
+
+    * A Flexible Keyphrase Extraction Technique for Academic Literature
+    """
+    raise NotImplementedError("Unfinished, do not use")
+
+    candidate_patterns = """
+    NP:
+        {(<NN.*>+)|(<NN.*>+<JJ.*>?)|(<JJ.*>?<NN.*>+)}
+        {<NN.*|JJ>*<NN.*>}
+        {(<JJ.>|<NN.>)*<IN>?(<JJ.>|<NN.>)*<NN.>}
+        {<PRP>?<JJ.*>*<NN.*>+}
+        {<DT|PP$>?<JJ>*<NN.*>+}
+        {(<\w+DT>)?(<\w+JJ>)*(<\w+>(<NN|NP|PRN>))}
+        {(<NN.*>+<JJ.*>?)|(<JJ.*>?<NN.*>+)}
+    """
+
+    cp = nltk.RegexpParser(grammar)
+
+    sent_tokenize_list = nltk.sent_tokenize(corpus)
+
+    for sent in sent_tokenize_list:
+        tagged_words = nltk.word_tokenize(sent)
+        tagged_tokens = nltk.tag.pos_tag(tagged_words)
+        identified = cp.parse(tagged_tokens)
+        
+        sent_len = len(sent.split(" "))
+        if sent_len % 2 == 0:
+            central_pos = int((sent_len - 1) / 2)
+        else:
+            central_pos = int(sent_len / 2)

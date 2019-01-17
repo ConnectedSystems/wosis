@@ -22,6 +22,7 @@ if __name__ == "__main__":
             'networkx',
             'python-louvain',
             'nltk',
+            'rake-nltk'
             'fuzzywuzzy',
             'scikit-learn',
             'tqdm',
