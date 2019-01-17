@@ -15,13 +15,16 @@ def search_records(records, keywords, threshold=60.0):
     Parameters
     ==========
     * records : Metaknowledge RecordCollection
-    * keywords : set or list, of keywords. Will be transformed to lowercase
+    * keywords : str or set or list, of keywords. Will be transformed to lowercase
     * threshold : float, similarity must be equal to or above this percentage threshold
 
     Returns
     ==========
     * Metaknowledge RecordCollection, of matched records
     """
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    
     keywords = set([kw.lower() for kw in keywords])
 
     matches = mk.RecordCollection()
