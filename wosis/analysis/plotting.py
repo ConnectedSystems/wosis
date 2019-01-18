@@ -32,6 +32,10 @@ def plot_saver(func):
             fig.savefig(save_plot_fn + '.png', format='png', 
                         dpi=300, bbox_inches='tight')
         # End if
+
+        ret = kwargs.pop('return_fig', None)
+        if ret:
+            return fig
     # End wrapper()
 
     return wrapper
@@ -67,6 +71,7 @@ def _set_title(title, num_text):
         y_pos = 1.08
     else:
         title = num_text
+        y_pos = 1.01
 
     return title, y_pos
 # End _set_title()
@@ -457,6 +462,8 @@ def plot_topic_trend(topics, total_rc=None, title='Topic Trend'):
 
         df = pd.DataFrame(rcs.timeSeries('year'))
         df = df.set_index('year', drop=True)
+
+        label = label + "\n({} publications)".format(df['count'].sum())
 
         ax = ((df['count'] / rc) * mod).plot(legend=True, ax=ax, label=label, style='-o', alpha=alpha_val)
     # End for
