@@ -56,5 +56,8 @@ def rc_to_df(recs, extra_cols=None):
     """
     if not extra_cols:
         extra_cols = ["AU", "SO", "DE", "DOI"]
-    df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols))
+    # df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols))
+    df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols, removeCopyright=True, lower=False, removeNonWords=False))
     return df
+
+    
