@@ -4,12 +4,14 @@ import nltk
 from nltk.stem import SnowballStemmer, WordNetLemmatizer
 
 from rake_nltk import Metric, Rake
+from fuzzywuzzy import fuzz
 
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
 
 from wosis import rc_to_df
 from wosis.TopicResult import TopicResult
+from wosis.PhraseResult import PhraseResult
 
 import warnings
 from zipfile import BadZipfile
@@ -168,7 +170,7 @@ def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
 # End remove_empty_DOIs()
 
 
-def find_phrases(corpora, min_len=2, max_len=None, lang='english'):
+def find_rake_phrases(corpora, min_len=2, max_len=None, lang='english'):
     """Find interesting phrases in given corpora.
     """
     if 'metaknowledge' in str(type(corpora)).lower():
@@ -189,6 +191,101 @@ def find_phrases(corpora, min_len=2, max_len=None, lang='english'):
     phrases = corpora_df['abstract'].apply(rake.extract_keywords_from_text, axis=1)
 
     rake.extract_keywords_from_text()
+
+
+def find_phrases(corpora, top_n=5, verbose=False):
+    """Find interesting phrases.
+
+    Inspired by work conducted by Rabby et al. (2018)
+
+    * A Flexible Keyphrase Extraction Technique for Academic Literature
+
+    This approach attempts to identify phrases of interest by identifying sentences
+    with similar, repeating, elements throughout the text.
+    
+    Conceptually, 
+    * the name of a method/approach may be introduced, discussed, and mentioned again in the conclusion.
+    * Important findings may be framed, findings alluded to, and then discussed.
+
+
+    Parameters
+    ==========
+    * corpora : Pandas DataFrame
+    * top_n : int, number of phrases to display
+    * verbose : bool, if True prints text, document title and top `n` phrases. Defaults to False.
+
+    Returns
+    ==========
+    * dict, results with DOI has main key, human readable document title and DOI as sub-keys and identified phrases as elements
+    """
+    ccc = corpora['abstract'].tolist()
+    results = {}
+    for c_idx, corpus in enumerate(ccc):
+        sent_tokenize_list = nltk.sent_tokenize(corpus)
+        sent_corpora = [[sent, 0.0] for sent in sent_tokenize_list]
+
+        sent_score = pd.DataFrame({'text': sent_tokenize_list})
+        sent_score['score'] = 0.0
+
+        doc_title = corpora.iloc[c_idx]['title'] + " ({})".format(corpora.iloc[c_idx]['year'])
+        if verbose:
+            print(doc_title)
+
+        if len(corpus) == 0:
+            print("    No abstract for {}, skipping...\n".format(doc_title))
+            return None
+
+        for idx, sent in enumerate(sent_tokenize_list):
+            split_sent = sent.split(" ")
+
+            sent_len = len(split_sent)
+            if sent_len % 2 == 0:
+                central_pos = int((sent_len - 1) / 2)
+            else:
+                central_pos = int(sent_len / 2)
+
+            root = split_sent[central_pos]
+
+            for candidate_sentence in sent_corpora:
+                candidate = candidate_sentence[0]
+                if (sent == candidate) or (root not in candidate):
+                    continue
+
+                current_score = sent_score.loc[idx, 'score']
+                sent_score.loc[idx, 'score'] = current_score + (fuzz.token_set_ratio(sent, candidate) / 100.0)
+            # End for
+        # End for
+
+        sent_score = sent_score[sent_score['score'] > 0.0]
+        sent_score = sent_score.sort_values('score', ascending=False).reset_index(drop=True)
+        tmp = sent_score[0:top_n]
+
+        results[corpora.iloc[c_idx]['DOI']] = {
+            'doc_title': doc_title,
+            'phrases': tmp.to_dict(),
+            'wos_id': corpora.iloc[c_idx]['id']
+        }
+
+        if verbose:
+            for row in tmp.itertuples():
+                print(row.text, '\n(Score: {})'.format(row.score), '\n')
+
+        if verbose:
+            print('='*20, '\n')
+
+    return PhraseResult(results)
+
+
+# def scan_for_phrases(corpora):
+#     corpora_df = wosis.rc_to_df(corpora)
+#     all_abstracts = corpora_df['abstract'].tolist()
+#     results = {}
+#     for row in corpora_df.itertuples():
+#         c_idx = row.Index
+#         corpus = row.abstract
+#         identify_phrases(corpus)
+#         results[row.title]
+
 
 
 def rabby_find_phrase(corpus):
