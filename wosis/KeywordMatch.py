@@ -30,7 +30,7 @@ class KeywordMatch(object):
             return self.combine_recs() + other.combine_recs()
         
         if hasattr(other, 'name'):
-            # Assume other is a metaknowledge
+            # Assume other is a metaknowledge collection
             return self.combine_recs() + other
         
         raise ValueError("Cannot add {} to {}".format(type(self), type(other)))
