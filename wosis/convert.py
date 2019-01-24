@@ -42,13 +42,14 @@ def rec_to_df(recs, extra_cols=None):
 # End rec_to_df()
 
 
-def rc_to_df(recs, extra_cols=None):
+def rc_to_df(recs, extra_cols=None, **kwargs):
     """Convert the given Metaknowledge RecordCollection to a Pandas DataFrame.
 
     Parameters
     ==========
     * rec : Metaknowledge RecordCollection
     * extra_cols : list[str], column names to extract given as RIS field codes. If `None` extracts all relevant fields.
+    * kwargs : dict, other arguments to parse to Metaknowledge `forNLP()`
 
     Returns
     ==========
@@ -56,8 +57,8 @@ def rc_to_df(recs, extra_cols=None):
     """
     if not extra_cols:
         extra_cols = ["AU", "SO", "DE", "DOI"]
-    # df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols))
-    df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols, removeCopyright=True, lower=False, removeNonWords=False))
+
+    df = pd.DataFrame(recs.forNLP(extraColumns=extra_cols, removeCopyright=True, lower=False, removeNonWords=False, **kwargs))
     return df
 
     
