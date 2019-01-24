@@ -51,7 +51,7 @@ class PhraseResult(object):
         for doi, doc in self.phrases.items():
             print(doc['doc_title'], '\nhttps://dx.doi.org/{}'.format(doi), '\n')
             for phrases in doc['phrases']['text'].values():
-                print('    ', phrases, '\n')
+                print(phrases, '\n')
             print("="*20, '\n')
 
     def __len__(self):
