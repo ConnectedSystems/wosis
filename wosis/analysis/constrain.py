@@ -16,7 +16,7 @@ from wosis.PhraseResult import PhraseResult
 import warnings
 from zipfile import BadZipfile
 
-__all__ = ['find_topics', 'remove_by_journals', 'remove_by_title', 'remove_empty_DOIs']
+__all__ = ['find_topics', 'find_phrases', 'remove_by_journals', 'remove_by_title', 'remove_empty_DOIs']
 
 # We lemmatize and stem words to homogenize similar content as much as possible
 lemmer = WordNetLemmatizer().lemmatize
@@ -30,7 +30,7 @@ def _ensure_df(corpora):
     if 'metaknowledge' in str(type(corpora)).lower():
         try:
             corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
-                                                              stemmer=_homogenize))
+                                                     stemmer=_homogenize))
         except BadZipfile:
             warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
             corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
@@ -199,9 +199,12 @@ def find_phrases(corpora, top_n=5, verbose=False):
     Inspired by work conducted by Rabby et al. (2018)
 
     * A Flexible Keyphrase Extraction Technique for Academic Literature
+      (https://doi.org/10.1016/j.procs.2018.08.208)
 
     This approach attempts to identify phrases of interest by identifying sentences
     with similar, repeating, elements throughout the text.
+
+    Sentences with less than 3 elements are automatically skipped.
     
     Conceptually, 
     * the name of a method/approach may be introduced, discussed, and mentioned again in the conclusion.
@@ -218,8 +221,12 @@ def find_phrases(corpora, top_n=5, verbose=False):
     ==========
     * dict, results with DOI has main key, human readable document title and DOI as sub-keys and identified phrases as elements
     """
+    if 'metaknowledge' in str(type(corpora)).lower():
+        corpora = rc_to_df(corpora, removeNumbers=False)
+
     ccc = corpora['abstract'].tolist()
     results = {}
+    sent_len_threshold = 3
     for c_idx, corpus in enumerate(ccc):
         sent_tokenize_list = nltk.sent_tokenize(corpus)
         sent_corpora = [[sent, 0.0] for sent in sent_tokenize_list]
@@ -239,6 +246,10 @@ def find_phrases(corpora, top_n=5, verbose=False):
             split_sent = sent.split(" ")
 
             sent_len = len(split_sent)
+            if sent_len <= sent_len_threshold:
+                # Sentence too small, skip it
+                continue
+
             if sent_len % 2 == 0:
                 central_pos = int((sent_len - 1) / 2)
             else:
@@ -248,7 +259,12 @@ def find_phrases(corpora, top_n=5, verbose=False):
 
             for candidate_sentence in sent_corpora:
                 candidate = candidate_sentence[0]
-                if (sent == candidate) or (root not in candidate):
+                len_candidate = len(candidate.split(' '))
+
+                sentence_too_small = (len_candidate <= sent_len_threshold)
+                root_not_found = (root not in candidate)
+                same_sentence = (sent == candidate)
+                if sentence_too_small or root_not_found or same_sentence:
                     continue
 
                 current_score = sent_score.loc[idx, 'score']
