@@ -61,3 +61,29 @@ class TopicResult(object):
 
         return topic_docs
     # End get_topic_by_id()
+
+    def find_paper_by_id(self, wos_id):
+        """Search for a given record based on its WoS ID
+
+        Parameters
+        ==========
+        * wos_id : str, Web of Science ID to search for
+
+        Returns
+        ==========
+        * DataFrame of the matching topic, or None if not found.
+        """
+        tmp_df = self.corpora_df
+        tmp_df.loc[tmp_df.id == wos_id]
+
+        for i in range(self.num_topics):
+            topic_id = i + 1
+            tmp_topic = self.get_topic_by_id(topic_id)
+            match = tmp_topic.loc[tmp_topic.id == wos_id]
+            if len(match) > 0:
+                print("Found in topic", topic_id)
+                return tmp_topic
+            # End if
+        # End for
+
+    # End find_paper_by_id()
