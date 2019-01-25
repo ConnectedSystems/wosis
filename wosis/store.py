@@ -15,8 +15,14 @@ def create_query_hash(query_str):
 
 
 def export_ris_file(records, filename):
-    ris_text = wos_parser.to_ris_text(records)
-    wos_parser.write_file(ris_text, filename)
+    """Write out records to RIS formatted file.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * filename : str, path and filename.
+    """
+    records.writeFile(filename)
 # End export_ris_file()
 
 

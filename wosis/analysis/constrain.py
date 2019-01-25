@@ -6,6 +6,8 @@ from nltk.stem import SnowballStemmer, WordNetLemmatizer
 from rake_nltk import Metric, Rake
 from fuzzywuzzy import fuzz
 
+from .similarity import string_match
+
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.decomposition import NMF, LatentDirichletAllocation
 
@@ -16,14 +18,17 @@ from wosis.PhraseResult import PhraseResult
 import warnings
 from zipfile import BadZipfile
 
-__all__ = ['find_topics', 'find_phrases', 'remove_by_journals', 'remove_by_title', 'remove_empty_DOIs']
+__all__ = ['find_topics', 'find_phrases', 'remove_by_journals',
+           'remove_by_title', 'remove_empty_DOIs', 'remove_by_keywords']
 
 # We lemmatize and stem words to homogenize similar content as much as possible
 lemmer = WordNetLemmatizer().lemmatize
 stemmer = SnowballStemmer('english').stem
 
+
 def _homogenize(word):
     return stemmer(lemmer(word))
+# End _homogenize()
 
 
 def _ensure_df(corpora):
@@ -38,6 +43,23 @@ def _ensure_df(corpora):
         corpora_df = corpora
 
     return corpora_df
+# End _ensure_df()
+
+
+def _remove_match(corpora, strings, col_name, verbose=True):
+    corpora_df = _ensure_df(corpora)
+
+    for unrelated in strings:
+        matched = corpora_df.loc[corpora_df[col_name].str.contains(unrelated), :]
+        count_removed = matched['id'].count()
+
+        if verbose:
+            print("{}: {}".format(unrelated, count_removed))
+
+        corpora_df = corpora_df.drop(matched.index, axis=0)
+
+    return corpora_df
+# End _remove_match()
 
 
 def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
@@ -115,34 +137,54 @@ def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
 
 
 def remove_by_journals(corpora, unrelated_journals, verbose=True):
-    corpora_df = _ensure_df(corpora)
+    """Remove records by match of given strings.
 
-    for unrelated in unrelated_journals:
-        count_removed = corpora_df.loc[corpora_df['SO'].str.contains(
-            unrelated), 'id'].count()
-        if verbose:
-            print("{}: {}".format(unrelated, count_removed))
-        corpora_df = corpora_df.drop(corpora_df.loc[corpora_df['SO'].str.contains(unrelated)].index,
-                               axis=0)
-    return corpora_df
+    Parameters
+    ==========
+    * corpora : Metaknowledge Record or Pandas DataFrame
+    * unrelated_titles : list[str], of words to find in titles
+    * verbose : bool, print out the number of records removed. Defaults to True
+
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    return _remove_match(corpora, unrelated_journals, 'SO', verbose=verbose)
 # End remove_by_journals()
 
 
 def remove_by_title(corpora, unrelated_titles, verbose=True):
-    corpora_df = _ensure_df(corpora)
+    """Remove records by match of given strings.
 
-    for unrelated in unrelated_titles:
-        count_removed = corpora_df.loc[corpora_df['title'].str.contains(
-            unrelated), 'id'].count()
+    Parameters
+    ==========
+    * corpora : Metaknowledge Record or Pandas DataFrame
+    * unrelated_titles : list[str], of words to find in titles
+    * verbose : bool, print out the number of records removed. Defaults to True
 
-        if verbose:
-            print("{}: {}".format(unrelated, count_removed))
-
-        corpora_df = corpora_df.drop(
-            corpora_df.loc[corpora_df['title'].str.contains(unrelated)].index, axis=0)
-
-    return corpora_df
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    return _remove_match(corpora, unrelated_titles, 'title', verbose=verbose)
 # End remove_by_title()
+
+
+def remove_by_keywords(corpora, unrelated_keywords, verbose=True):
+    """Remove records by match of given strings.
+
+    Parameters
+    ==========
+    * corpora : Metaknowledge Record or Pandas DataFrame
+    * unrelated_keywords : list[str], of words to find in author listed keywords
+    * verbose : bool, print out the number of records removed. Defaults to True
+
+    Returns
+    ==========
+    * Pandas DataFrame
+    """
+    return _remove_match(corpora, unrelated_keywords, 'keywords', verbose=verbose)
+# End remove_by_keywords()
 
 
 def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
@@ -191,6 +233,7 @@ def find_rake_phrases(corpora, min_len=2, max_len=None, lang='english'):
     phrases = corpora_df['abstract'].apply(rake.extract_keywords_from_text, axis=1)
 
     rake.extract_keywords_from_text()
+# End find_rake_phrases()
 
 
 def find_phrases(corpora, top_n=5, verbose=False):
@@ -290,49 +333,4 @@ def find_phrases(corpora, top_n=5, verbose=False):
             print('='*20, '\n')
 
     return PhraseResult(results)
-
-
-# def scan_for_phrases(corpora):
-#     corpora_df = wosis.rc_to_df(corpora)
-#     all_abstracts = corpora_df['abstract'].tolist()
-#     results = {}
-#     for row in corpora_df.itertuples():
-#         c_idx = row.Index
-#         corpus = row.abstract
-#         identify_phrases(corpus)
-#         results[row.title]
-
-
-
-def rabby_find_phrase(corpus):
-    """Implementation based on paper by Rabby et al. (2018)
-
-    * A Flexible Keyphrase Extraction Technique for Academic Literature
-    """
-    raise NotImplementedError("Unfinished, do not use")
-
-    candidate_patterns = """
-    NP:
-        {(<NN.*>+)|(<NN.*>+<JJ.*>?)|(<JJ.*>?<NN.*>+)}
-        {<NN.*|JJ>*<NN.*>}
-        {(<JJ.>|<NN.>)*<IN>?(<JJ.>|<NN.>)*<NN.>}
-        {<PRP>?<JJ.*>*<NN.*>+}
-        {<DT|PP$>?<JJ>*<NN.*>+}
-        {(<\w+DT>)?(<\w+JJ>)*(<\w+>(<NN|NP|PRN>))}
-        {(<NN.*>+<JJ.*>?)|(<JJ.*>?<NN.*>+)}
-    """
-
-    cp = nltk.RegexpParser(grammar)
-
-    sent_tokenize_list = nltk.sent_tokenize(corpus)
-
-    for sent in sent_tokenize_list:
-        tagged_words = nltk.word_tokenize(sent)
-        tagged_tokens = nltk.tag.pos_tag(tagged_words)
-        identified = cp.parse(tagged_tokens)
-        
-        sent_len = len(sent.split(" "))
-        if sent_len % 2 == 0:
-            central_pos = int((sent_len - 1) / 2)
-        else:
-            central_pos = int(sent_len / 2)
+# End find_phrases()
