@@ -26,6 +26,7 @@ if __name__ == "__main__":
             'fuzzywuzzy',
             'scikit-learn',
             'tqdm',
+            'metaknowledge>=3.3.2'
         ],
         extras_require={
             'levenshtein': ['python-levenshtein']
