@@ -168,10 +168,10 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
     time_series = search_results.timeSeries(pandasMode=True)
 
     if len(time_series['entry'][0]['DE']) == 1:
-        num_kwds = [len(ent['DE'][0].split()) + len(ent['ID'][0].split())
-                for ent in time_series['entry']]
+        num_kwds = [len(ent['DE'][0].split())  
+                    for ent in time_series['entry']]
     else:
-        num_kwds = [len(ent['DE']) + len(ent['ID'])
+        num_kwds = [len(ent['DE'])
                     for ent in time_series['entry']]
     # End if
     
