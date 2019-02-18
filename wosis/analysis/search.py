@@ -278,11 +278,15 @@ def find_pubs_by_journal(records, journal_list):
     dict[mk.RecordCollection]
     """
     journal_pubs = {}
+    rec_name = records.name
+    if 'empty' in rec_name.lower():
+        raise ValueError("Cannot create unique collection - give the RecordCollection a name first!")
     for rec in records:
         j_name = rec.get('SO')
+        u_name = rec_name + '_' + j_name
         if j_name in journal_list:
-            journal_pubs[j_name] = journal_pubs.get(j_name, mk.RecordCollection(name=j_name))
-            journal_pubs[j_name].add(rec)
+            journal_pubs[u_name] = journal_pubs.get(u_name, mk.RecordCollection(name=u_name))
+            journal_pubs[u_name].add(rec)
     
     return journal_pubs
 # End find_pubs_by_journal()
