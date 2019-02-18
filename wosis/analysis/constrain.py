@@ -113,6 +113,11 @@ def cluster_topics(approach, docs, num_features, stop_words='english', verbose=T
 
 
 def NMF_cluster(docs, num_topics, num_features, stop_words='english', verbose=True):
+    """NMF clustering based on:
+    
+    https://medium.com/mlreview/topic-modeling-with-scikit-learn-e80d33668730
+    https://medium.com/ml2vec/topic-modeling-is-an-unsupervised-learning-approach-to-clustering-documents-to-discover-topics-fdfbf30e27df
+    """
     trans, names = cluster_topics(
         TfidfVectorizer, docs, num_features, stop_words, verbose)
 
@@ -125,6 +130,11 @@ def NMF_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
 
 
 def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=True):
+    """LDA clustering based on:
+    
+    https://medium.com/mlreview/topic-modeling-with-scikit-learn-e80d33668730
+    https://medium.com/ml2vec/topic-modeling-is-an-unsupervised-learning-approach-to-clustering-documents-to-discover-topics-fdfbf30e27df
+    """
     trans, names = cluster_topics(
         CountVectorizer, docs, num_features, stop_words, verbose)
 
