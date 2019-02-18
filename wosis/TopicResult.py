@@ -73,8 +73,8 @@ class TopicResult(object):
         ==========
         * DataFrame of the matching topic, or None if not found.
         """
-        tmp_df = self.corpora_df
-        tmp_df.loc[tmp_df.id == wos_id]
+        # tmp_df = self.corpora_df
+        # tmp_df.loc[tmp_df.id == wos_id]
 
         for i in range(self.num_topics):
             topic_id = i + 1
@@ -85,5 +85,30 @@ class TopicResult(object):
                 return tmp_topic
             # End if
         # End for
+
+    def find_paper_by_doi(self, doi):
+        """Search for a given record based on its DOI
+
+        Parameters
+        ==========
+        * doi : str, DOI to search for
+
+        Returns
+        ==========
+        * DataFrame of the matching topic, or None if not found.
+        """
+        # tmp_df = self.corpora_df
+        # tmp_df.loc[tmp_df.DOI == doi]
+
+        for i in range(self.num_topics):
+            topic_id = i + 1
+            tmp_topic = self.get_topic_by_id(topic_id)
+            match = tmp_topic.loc[tmp_topic.DOI == doi]
+            if len(match) > 0:
+                print("Found in topic", topic_id)
+                return tmp_topic
+            # End if
+        # End for
+
 
     # End find_paper_by_id()
