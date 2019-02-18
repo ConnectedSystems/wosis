@@ -295,7 +295,7 @@ def _prep_journal_records(search_results):
 
 
 @plot_saver
-def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=True):
+def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=True, title=None):
     """Plot horizontal bar plot of publications for each journal in descending order.
 
     Parameters
@@ -321,7 +321,11 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
 
     pubs_by_journal = pubs_by_journal.sort_values(ascending=False)
     subtotal = pubs_by_journal.sort_values(ascending=False)[0:10].sum()
-    plot_title = "Top {} Journals by Number of Publications".format(top_n)
+
+    if title is None:
+        plot_title = "Top {} Journals by Number of Publications".format(top_n)
+    else:
+        plot_title = title
 
     if show_stats:
         plot_title += "\n{} out of {} ({:.2f}%)".format(subtotal, len(
