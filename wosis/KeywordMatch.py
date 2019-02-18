@@ -18,9 +18,10 @@ class KeywordMatch(object):
         """Combine all records into one"""
         return reduce(lambda x, y: x + y, self.recs.values())
 
-    @property
-    def name(self):
-        names = " | ".join([rc.name for rc in self.recs.values()])
+    # @property
+    # def name(self):
+    #     names = " | ".join([rc.name for rc in self.recs.values()])
+    #     return names
 
     def __len__(self):
         return sum([len(rc) for rc in self.recs.values()])
