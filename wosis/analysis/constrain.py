@@ -114,7 +114,7 @@ def cluster_topics(approach, docs, num_features, stop_words='english', verbose=T
 
 def NMF_cluster(docs, num_topics, num_features, stop_words='english', verbose=True):
     """NMF clustering based on:
-    
+
     https://medium.com/mlreview/topic-modeling-with-scikit-learn-e80d33668730
     https://medium.com/ml2vec/topic-modeling-is-an-unsupervised-learning-approach-to-clustering-documents-to-discover-topics-fdfbf30e27df
     """
@@ -131,7 +131,7 @@ def NMF_cluster(docs, num_topics, num_features, stop_words='english', verbose=Tr
 
 def LDA_cluster(docs, num_topics, num_features, stop_words='english', verbose=True):
     """LDA clustering based on:
-    
+
     https://medium.com/mlreview/topic-modeling-with-scikit-learn-e80d33668730
     https://medium.com/ml2vec/topic-modeling-is-an-unsupervised-learning-approach-to-clustering-documents-to-discover-topics-fdfbf30e27df
     """
@@ -226,7 +226,7 @@ def find_rake_phrases(corpora, min_len=2, max_len=None, lang='english'):
     """Find interesting phrases in given corpora.
     """
     if 'metaknowledge' in str(type(corpora)).lower():
-        corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"], 
+        corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
                                                  removeCopyright=True))
     else:
         corpora_df = corpora.copy()
@@ -246,7 +246,7 @@ def find_rake_phrases(corpora, min_len=2, max_len=None, lang='english'):
 # End find_rake_phrases()
 
 
-def find_phrases(corpora, top_n=5, verbose=False):
+def find_phrases(corpora, top_n=5, verbose=False, weighted_keywords=None):
     """Find interesting phrases.
 
     Inspired by work conducted by Rabby et al. (2018)
@@ -258,8 +258,8 @@ def find_phrases(corpora, top_n=5, verbose=False):
     with similar, repeating, elements throughout the text.
 
     Sentences with less than 3 elements are automatically skipped.
-    
-    Conceptually, 
+
+    Conceptually,
     * the name of a method/approach may be introduced, discussed, and mentioned again in the conclusion.
     * Important findings may be framed, findings alluded to, and then discussed.
 
@@ -269,6 +269,7 @@ def find_phrases(corpora, top_n=5, verbose=False):
     * corpora : Pandas DataFrame
     * top_n : int, number of phrases to display
     * verbose : bool, if True prints text, document title and top `n` phrases. Defaults to False.
+    * weighted_keywords : list or None, if defined give further weight on phrases with given keywords.
 
     Returns
     ==========
@@ -323,6 +324,11 @@ def find_phrases(corpora, top_n=5, verbose=False):
                 current_score = sent_score.loc[idx, 'score']
                 sent_score.loc[idx, 'score'] = current_score + (fuzz.token_set_ratio(sent, candidate) / 100.0)
             # End for
+
+            # Further weight on occurance of specific keywords
+            if weighted_keywords:
+                if any(word in sent for word in weighted_keywords):
+                    sent_score.loc[idx, 'score'] += 5.0
         # End for
 
         sent_score = sent_score[sent_score['score'] > 0.0]
