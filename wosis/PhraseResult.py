@@ -15,7 +15,7 @@ class PhraseResult(object):
 
     @property
     def documents(self):
-        return {k: self.phrases[k]['doc_title'] 
+        return {k: self.phrases[k]['doc_title']
                 for k in self.phrases.keys()}
 
     @property
@@ -30,6 +30,7 @@ class PhraseResult(object):
         return titles
 
     def get_phrases(self, doi):
+        """Get key phrases for a specific DOI"""
         selected = self.phrases[doi]
         print(selected['doc_title'])
         return pd.DataFrame(selected['phrases'])
@@ -40,10 +41,15 @@ class PhraseResult(object):
         for doi in self.phrases:
             current = self.phrases[doi]
             doctitle = current['doc_title']
-            extracted = pd.DataFrame.from_dict({(doi, doctitle): current['phrases']['text']}, 
+            extracted = pd.DataFrame.from_dict({(doi, doctitle): current['phrases']['text']},
                             orient='index')
             tmp = pd.concat((tmp, extracted), axis=0)
         # End for
+
+        first = next(iter(self.phrases))
+        num_phrases = len(self.phrases[first]['phrases']['text'])
+        tmp.columns = [i for i in range(1, num_phrases+1)]
+        tmp.index.names = ('DOI', 'title')
 
         return tmp
 
