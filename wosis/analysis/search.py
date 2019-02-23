@@ -24,7 +24,7 @@ def search_records(records, keywords, threshold=60.0):
     """
     if isinstance(keywords, str):
         keywords = [keywords]
-    
+
     keywords = set([kw.lower() for kw in keywords])
 
     matches = mk.RecordCollection()
@@ -224,6 +224,34 @@ def get_unique_kw_titles(match_records):
 # End get_unique_kw_titles()
 
 
+def find_pubs_by_title(records, titles):
+    """Find publications by title.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * titles : list, of titles to search for (has to be exact match)
+
+    Returns
+    ==========
+    * Metaknowledge RecordCollection or None if no matches found
+    """
+    if hasattr(titles, 'lower'):
+        # titles is a string, convert to list
+        titles = [titles]
+
+    new_rc = mk.RecordCollection()
+    for rec in records:
+        if rec.title in titles:
+            new_rc.add(rec)
+
+    if len(new_rc) == 0:
+        return None
+
+    return new_rc
+# End find_pubs_by_title()
+
+
 def find_pubs_by_authors(records, author_list, threshold=60.0):
     """Get publications by specific authors.
 
@@ -267,7 +295,7 @@ def find_pubs_by_authors(records, author_list, threshold=60.0):
 
 def find_pubs_by_journal(records, journal_list):
     """Get publications in specific journals
-    
+
     Parameters
     ==========
     * records : Metaknowledge RecordCollection, representing corpora
@@ -287,7 +315,7 @@ def find_pubs_by_journal(records, journal_list):
         if j_name in journal_list:
             journal_pubs[u_name] = journal_pubs.get(u_name, mk.RecordCollection(name=u_name))
             journal_pubs[u_name].add(rec)
-    
+
     return journal_pubs
 # End find_pubs_by_journal()
 
