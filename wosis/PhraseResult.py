@@ -38,16 +38,17 @@ class PhraseResult(object):
     @property
     def all_phrases(self):
         tmp = None
+        num_phrases = 0
         for doi in self.phrases:
             current = self.phrases[doi]
             doctitle = current['doc_title']
-            extracted = pd.DataFrame.from_dict({(doi, doctitle): current['phrases']['text']},
+            phrases = current['phrases']['text']
+            extracted = pd.DataFrame.from_dict({(doi, doctitle): phrases},
                             orient='index')
             tmp = pd.concat((tmp, extracted), axis=0)
+            num_phrases = max(len(phrases), num_phrases)
         # End for
 
-        first = next(iter(self.phrases))
-        num_phrases = len(self.phrases[first]['phrases']['text'])
         tmp.columns = [i for i in range(1, num_phrases+1)]
         tmp.index.names = ('DOI', 'title')
 
