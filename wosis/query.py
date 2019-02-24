@@ -1,12 +1,14 @@
 import os
 from os.path import join as pj
 from glob import glob
+from io import StringIO
 
 import wosis
 import wosis.store as store
 import wos_parser
 import wos
 import pickle
+import re
 
 import metaknowledge as mk
 import pandas as pd
@@ -25,6 +27,8 @@ import logging
 __all__ = ['load_config', 'build_query', 'query', 'grab_records',
            'grab_cited_works', 'get_citing_works', 'load_query_results', 'get_num_citations']
 
+start_rec = re.compile("<REC", re.IGNORECASE)
+end_rec = re.compile("</REC>", re.IGNORECASE)
 
 # suppress output from suds which gets really annoying
 logging.getLogger('suds.client').setLevel(logging.CRITICAL)
@@ -106,14 +110,25 @@ def build_query(search_params):
 # End build_query()
 
 
-def load_query_results(query_id, file_loc='tmp'):
-    fn = pj(file_loc, query_id+'.txt')
+def load_query_results(fn, file_loc=None):
+    """Load a stored query result saved in RIS format.
+
+    Parameters
+    ==========
+    * fn : str, path to file, including path and extension.
+    """
+    if file_loc:
+        raise ValueError("file location parameter deprecated - specify path and extension in filename instead")
+
+    if not os.path.isfile(fn):
+        raise ValueError("Could not find file - did you forget the folder or file extension?")
+
     return mk.RecordCollection(fn)
 # End load_query_results()
 
 
 
-def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
+def query(queries, overwrite, config, time_span=None, tmp_dir='tmp', skip_refs=False):
     """Query the Web of Science collection via its API.
 
     Parameters
@@ -125,6 +140,8 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
                   begin - Beginning date for this search. Format: YYYY-MM-DD
                   end - Ending date for this search. Format: YYYY-MM-DD
     * tmp_dir : str, path to temporary directory. Defaults to `tmp` in current location.
+    * skip_refs : bool, get bibliometric data for works referenced in the corpora as well.
+                  Defaults to False.
 
     Returns
     ==========
@@ -137,13 +154,19 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
     for query_str in queries:
         with wos.WosClient(user=config['user'], password=config['password']) as client:
             recs, xml_list = grab_records(
-                client, query_str, time_span=time_span, verbose=False)
-            recs = grab_cited_works(
-                client, query_str, recs, skip_refs=False, get_all_refs=True)
+                client, query_str, time_span=time_span, verbose=False, tmp_dir=tmp_dir)
+            if not skip_refs:
+                recs = grab_cited_works(
+                    client, query_str, recs, skip_refs=False, get_all_refs=True, tmp_dir=tmp_dir)
         # End with
 
         num_ris_records = len(recs)
         print("Got {} records".format(num_ris_records))
+
+        ris_info = wos_parser.rec_info_to_ris(recs)
+        ris_text = wos_parser.to_ris_text(ris_info)
+        wos_parser.write_file(
+            ris_text, pj('../tmp', 'test'), overwrite=True)
 
         md5_hash = store.create_query_hash(query_str)
         if time_span:
@@ -152,9 +175,10 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
         tmp_file = pj(tmp_dir, md5_hash)
         prev_q_exists = os.path.isfile('{}.txt'.format(tmp_file))
         if (prev_q_exists and overwrite) or not prev_q_exists:
-            ris_text = wos_parser.to_ris_text(recs)
+            ris_info = wos_parser.rec_info_to_ris(recs)
+            ris_text = wos_parser.to_ris_text(ris_info)
             wos_parser.write_file(
-                ris_text, '{}'.format(tmp_file), overwrite=overwrite)
+                ris_text, tmp_file, overwrite=overwrite)
         # else:
         #     continue
         # # End if
@@ -165,11 +189,16 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp'):
 
     # dump out the query hash to file
     with open(pj(tmp_dir, 'hash_to_query.txt'), 'w') as hash_file:
-        hash_file.write(json.dumps(hash_to_query, indent=2))
+        json.dump(hash_to_query, hash_file, indent=2)
 
     return hash_to_query, hash_to_col
 # End query()
 
+
+def _ensure_separation(xml_string):
+    xml_string = start_rec.sub("\n<REC", xml_string)
+    xml_string = end_rec.sub("</REC>\n", xml_string)
+    return xml_string
 
 def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
                  verbose=False):
@@ -227,8 +256,9 @@ def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
                 resp = client.retrieve(q_id, batch_size, batch_start)
             # End try
 
-            recs.extend(wos_parser.read_xml_string(resp.records))
-            xml_list.append(resp.records)
+            xml = _ensure_separation(resp.records)
+            recs.extend(wos_parser.read_xml_string(xml))
+            xml_list.append(xml)
         # End for
 
         with open(cache_file, 'wb') as outfile:
@@ -241,6 +271,8 @@ def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
 
         recs = []
         for xml in xml_list:
+            # ensure elements are separated
+            xml = _ensure_separation(xml)
             recs.extend(wos_parser.read_xml_string(xml))
         # End for
     # End if
@@ -291,7 +323,7 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False,
     cache_file = os.path.join(tmp_dir, cache_file)
 
     if os.path.isfile(cache_file):
-        warnings.warn("Using cached results...")
+        warnings.warn("Using cached referenced works...")
         with open(cache_file, 'rb') as infile:
             ris_records = pickle.load(infile)
         # End with
