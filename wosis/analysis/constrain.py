@@ -1,4 +1,6 @@
+import os
 import pandas as pd
+import pickle 
 
 import nltk
 from nltk.stem import SnowballStemmer, WordNetLemmatizer
@@ -19,7 +21,7 @@ import warnings
 from zipfile import BadZipfile
 
 __all__ = ['find_topics', 'find_phrases', 'remove_by_journals',
-           'remove_by_title', 'remove_empty_DOIs', 'remove_by_keywords']
+           'remove_by_title', 'remove_empty_DOIs', 'remove_duplicates', 'remove_by_keywords']
 
 # We lemmatize and stem words to homogenize similar content as much as possible
 lemmer = WordNetLemmatizer().lemmatize
@@ -31,14 +33,23 @@ def _homogenize(word):
 # End _homogenize()
 
 
-def _ensure_df(corpora):
+def _ensure_df(corpora, **kwargs):
+    """Convert RecordCollection to DataFrame for analysis purposes with additional checks.
+
+    Parameters
+    ==========
+    * corpora : object, representing corpora
+    """
     if 'metaknowledge' in str(type(corpora)).lower():
+        cols = ["AU", "SO", "DE", "DOI"]
         try:
-            corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
-                                                     stemmer=_homogenize))
+            corpora_df = rc_to_df(corpora, extra_cols=cols, stemmer=_homogenize, **kwargs)
+            # corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"],
+            #                                          stemmer=_homogenize, **kwargs))
         except BadZipfile:
             warnings.warn("Could not stem/lemmatize content - set up NLTK WordNet data first!")
-            corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
+            corpora_df = rc_to_df(corpora, extra_cols=cols, **kwargs)
+            # corpora_df = pd.DataFrame(corpora.forNLP(extraColumns=["AU", "SO", "DE"]))
     elif 'dataframe' in str(type(corpora)).lower():
         corpora_df = corpora
 
@@ -62,13 +73,13 @@ def _remove_match(corpora, strings, col_name, verbose=True):
 # End _remove_match()
 
 
-def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, verbose=True):
+def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, cache_as=None, verbose=True):
     """Using one of several approaches, try to identify topics to help constrain search space.
 
     Parameters
     ==========
-    * corpora_df : Pandas DataFrame, Corpora derived from Metaknowledge RecordCollection
-    * model_type : str, name of topic modeling approach
+    * corpora_df : DataFrame or RecordCollection, representing the corpora apply topic modeling to
+    * model_type : str, name of topic modeling approach. Defaults to Non-negative Matrix Factorization
     * num_topics : int, attempt to sort documents into this number of topics
     * num_features : int, essentially the maximum number of words to consider per corpus
     * verbose : bool, print out information or not. Default to True
@@ -77,6 +88,15 @@ def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, ver
     ==========
     * tuple, TopicResults object
     """
+    # Load previously cached results if available
+    if cache_as and os.path.isfile(cache_as):
+        # Cache topic model results
+        with open(cache_as, 'rb') as fn:
+            res = pickle.load(fn)
+            if verbose:
+                res.display_topics()
+        return res
+
     corpora_df = _ensure_df(corpora)
 
     combined_kws = corpora_df['DE'].str.split("|").tolist()
@@ -95,6 +115,12 @@ def find_topics(corpora, model_type='NMF', num_topics=10, num_features=1000, ver
 
     if verbose:
         res.display_topics()
+    
+    if cache_as:
+        # Cache topic model results
+        with open(cache_as, 'wb') as fn:
+            pickle.dump(res, fn)
+
 
     return res
 
@@ -197,7 +223,7 @@ def remove_by_keywords(corpora, unrelated_keywords, verbose=True):
 # End remove_by_keywords()
 
 
-def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
+def remove_empty_DOIs(corpora, verbose=True):
     """Remove records with no associated DOI from DataFrame.
 
     Parameters
@@ -221,6 +247,17 @@ def remove_empty_DOIs(corpora, return_removed=False, verbose=True):
     return filtered, to_be_removed
 # End remove_empty_DOIs()
 
+
+def remove_duplicates(corpora, verbose=True):
+    corpora_df = _ensure_df(corpora)
+    to_be_removed = corpora_df[corpora_df.DOI.duplicated()]
+    if verbose:
+        count_dups = to_be_removed['DOI'].count()
+        print("Removing {} duplicated records (identical DOIs)".format(count_dups))
+
+    filtered = corpora_df[~corpora_df.DOI.duplicated()]
+
+    return filtered, to_be_removed
 
 def find_rake_phrases(corpora, min_len=2, max_len=None, lang='english'):
     """Find interesting phrases in given corpora.
@@ -266,7 +303,7 @@ def find_phrases(corpora, top_n=5, verbose=False, weighted_keywords=None):
 
     Parameters
     ==========
-    * corpora : Pandas DataFrame
+    * corpora : DataFrame or RecordCollection
     * top_n : int, number of phrases to display
     * verbose : bool, if True prints text, document title and top `n` phrases. Defaults to False.
     * weighted_keywords : list or None, if defined give further weight on phrases with given keywords.
@@ -276,6 +313,7 @@ def find_phrases(corpora, top_n=5, verbose=False, weighted_keywords=None):
     * dict, results with DOI has main key, human readable document title and DOI as sub-keys and identified phrases as elements
     """
     if 'metaknowledge' in str(type(corpora)).lower():
+        # Does not use _ensure_df as complete sentences are desired
         corpora = rc_to_df(corpora, removeNumbers=False)
 
     ccc = corpora['abstract'].tolist()
