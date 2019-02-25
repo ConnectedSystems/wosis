@@ -221,7 +221,7 @@ def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
     md5_hash = store.create_query_hash(query)
 
     os.makedirs(tmp_dir, exist_ok=True)
-    cache_file = '{}.dmp'.format(md5_hash)
+    cache_file = '{}_{}-{}.dmp'.format(md5_hash, *time_span)
     cache_file = os.path.join(tmp_dir, cache_file)
     if not os.path.isfile(cache_file):
         recs = []
