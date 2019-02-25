@@ -1,6 +1,6 @@
 import metaknowledge as mk
 import pandas as pd
-
+import warnings
 
 def extract_recs(id_list, mk_rec, name=None):
     """Extract given records by ID from metaknowledge collection into a new collection.
@@ -36,7 +36,6 @@ def rec_to_df(recs, extra_cols=None):
     ==========
     * Pandas DataFrame
     """
-    import warnings
     warnings.warn("Deprecated function `rec_to_df` - use `rc_to_df()` instead!", DeprecationWarning)
     return rc_to_df(recs, extra_cols)
 # End rec_to_df()
