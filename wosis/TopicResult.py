@@ -73,9 +73,6 @@ class TopicResult(object):
         ==========
         * DataFrame of the matching topic, or None if not found.
         """
-        # tmp_df = self.corpora_df
-        # tmp_df.loc[tmp_df.id == wos_id]
-
         for i in range(self.num_topics):
             topic_id = i + 1
             tmp_topic = self.get_topic_by_id(topic_id)
@@ -97,9 +94,6 @@ class TopicResult(object):
         ==========
         * DataFrame of the matching topic, or None if not found.
         """
-        # tmp_df = self.corpora_df
-        # tmp_df.loc[tmp_df.DOI == doi]
-
         for i in range(self.num_topics):
             topic_id = i + 1
             tmp_topic = self.get_topic_by_id(topic_id)
