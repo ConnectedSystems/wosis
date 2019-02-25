@@ -74,10 +74,10 @@ def link_to_pub(records):
     ==========
     * Pandas DataFrame with additional column ('DOI link')
     """
-    if 'metaknowledge' in str(type(records)):
+    if 'metaknowledge' in str(type(records)).lower():
         recs = records.forNLP(extraColumns=["AU", "SO", "DE", 'DOI'], lower=False, removeNonWords=False)
         df = pd.DataFrame(recs)
-    elif 'DataFrame' in str(type(records)):
+    elif 'dataframe' in str(type(records)).lower():
         df = records
     # End if
 
