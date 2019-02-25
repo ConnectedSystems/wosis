@@ -240,9 +240,43 @@ def find_pubs_by_title(records, titles):
         # titles is a string, convert to list
         titles = [titles]
 
+    titles = set(titles)
+
     new_rc = mk.RecordCollection()
     for rec in records:
-        if rec.title in titles:
+        curr_doi = rec.get('DI')
+        if rec.title in titles and not new_rc.containsID(curr_doi):
+            new_rc.add(rec)
+
+    if len(new_rc) == 0:
+        return None
+
+    return new_rc
+# End find_pubs_by_title()
+
+
+def find_pubs_by_doi(records, dois):
+    """Find publications by title.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * titles : list, of titles to search for (has to be exact match)
+
+    Returns
+    ==========
+    * Metaknowledge RecordCollection or None if no matches found
+    """
+    if hasattr(dois, 'lower'):
+        # titles is a string, convert to list
+        dois = [dois]
+
+    dois = set(dois)
+
+    new_rc = mk.RecordCollection()
+    for rec in records:
+        curr_doi = rec.get('DI')
+        if curr_doi in dois and not new_rc.containsID(curr_doi):
             new_rc.add(rec)
 
     if len(new_rc) == 0:
