@@ -78,7 +78,7 @@ def link_to_pub(records):
         recs = records.forNLP(extraColumns=["AU", "SO", "DE", 'DOI'], lower=False, removeNonWords=False)
         df = pd.DataFrame(recs)
     elif 'dataframe' in str(type(records)).lower():
-        df = records
+        df = records.copy()
     # End if
 
     df.loc[df['DOI'] != '', 'DOI link'] = "https://dx.doi.org/" + df.loc[df['DOI'] != '', 'DOI'].astype(str)
