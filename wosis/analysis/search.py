@@ -89,6 +89,9 @@ def keyword_matches(records, keywords, threshold=60.0):
     ==========
     * dict, matching records by keyword
     """
+    if isinstance(keywords, str):
+        keywords = [keywords, ]
+
     matching_records = {}
     for kw in keywords:
         matching_records[kw] = search_records(records, set([kw, ]), threshold)
