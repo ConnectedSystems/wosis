@@ -438,41 +438,34 @@ def get_citing_works(wos_id, config):
 # End get_citing_works()
 
 
-def get_num_citations(records, config, cache_dir=None):
+def get_num_citations(records, config, cache_as=None):
     """Send query to get the number of citations for a given WoS record.
 
     Parameters
     ==========
     * records : Metaknowledge RecordCollection
     * config : dict, config settings
-    * cache_dir : str or None, if specified use data in cache directory (or save data to it).
-                  Defaults to None.
+    * cache_as : str or None, if specified use data to specified file (or save to it for later reuse)
 
     Returns
     ==========
     * Pandas DataFrame, publication details with citations
     """
-    if cache_dir:
-        record_name = records.name
-        if "empty" in record_name.lower():
-            print("Cannot cache results - specify a name for the Record Collection!")
-            fn = None
-        else:
-            fn = '{}/{}_citations.csv'.format(cache_dir, record_name)
-            file_list = glob(fn)
-            if file_list:
-                return pd.read_csv(fn, index_col=0)
-
+    if cache_as:
+        file_list = glob(cache_as)
+        if file_list:
+            return pd.read_csv(cache_as, index_col=0)
 
     cites = {}
     with wos.WosClient(user=config['user'], password=config['password']) as client:
         for rec in tqdm(records):
             wos_id = rec.get('id')
             try:
-                probe = client.citingArticles(wos_id, count=1)
+                # Using a count of 0 returns just the summary information
+                probe = client.citingArticles(wos_id, count=0)
             except Exception as e:
                 _handle_webfault(client, e)
-                probe = client.citingArticles(wos_id, count=1)
+                probe = client.citingArticles(wos_id, count=0)
             # End try
 
             cites[wos_id] = probe.recordsFound
@@ -486,8 +479,8 @@ def get_num_citations(records, config, cache_dir=None):
     tmp_df = wosis.rc_to_df(records)
     results_df = (pd.merge(tmp_df, citations, on='id')).sort_values('citations', ascending=False).reset_index(drop=True)
 
-    if cache_dir and fn:
-        results_df.to_csv(fn)
+    if cache_as:
+        results_df.to_csv(cache_as)
 
     return results_df
 
