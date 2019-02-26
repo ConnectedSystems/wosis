@@ -7,6 +7,9 @@ import json
 from os.path import join as pj
 from datetime import datetime
 
+__all__ = ['create_query_hash', 'export_ris_file', 'store_query_hash', 
+           'export_representative_file', 'combine_manually_sorted']
+
 def create_query_hash(query_str):
     hash_object = hashlib.md5(query_str.encode())
     md5_hash = hash_object.hexdigest()
@@ -60,3 +63,30 @@ def export_representative_file(records, retrieval_date, data_fn='../data/repset.
         repset_df.to_csv(fn)
     # End with
 # End export_representative_file()
+
+
+def combine_manually_sorted(target, other):
+    """Combine two DataFrames representing manually sorted records.
+
+    Parameters
+    ==========
+    * target : DataFrame, data will be merged into this DataFrame
+    * other : DataFrame, data will be copied from this DataFrame
+
+    Returns
+    ==========
+    * New Merged DataFrame
+    """
+    assert hasattr(target, 'DOI'), "Both DataFrames have to include DOIs"
+    assert hasattr(other, 'DOI'), "Both DataFrames have to include DOIs"
+
+    assert hasattr(other, 'relevant'), "The DataFrame with data to be copied across has to have a 'relevant' column"
+
+    result = target.copy()
+
+    result['relevant'] = target.merge(other, how='left', on=['DOI'])['relevant']
+    col_order = ['relevant'] + [col for col in result.columns if col != 'relevant']
+    result = result[col_order]
+
+    return result
+# End combine_manually_sorted()

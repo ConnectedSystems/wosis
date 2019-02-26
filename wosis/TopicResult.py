@@ -82,6 +82,7 @@ class TopicResult(object):
                 return tmp_topic
             # End if
         # End for
+    # End find_paper_by_id
 
     def find_paper_by_doi(self, doi):
         """Search for a given record based on its DOI
@@ -103,6 +104,4 @@ class TopicResult(object):
                 return tmp_topic
             # End if
         # End for
-
-
-    # End find_paper_by_id()
+    # End find_paper_by_doi()
