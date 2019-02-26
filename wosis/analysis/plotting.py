@@ -374,6 +374,9 @@ def plot_journal_pub_trend(search_results, title='Journal Publication Trend', to
     pubs_across_time = pubs_across_time.fillna(0.0).transpose()
     pubs_across_time = pubs_across_time.sort_index()
 
+    # Reorder based on total publications
+    pubs_across_time = pubs_across_time[top_n_journals.index]
+
     axes = pubs_across_time.plot(subplots=True, figsize=(
         12, 10), layout=(top_n, 1), sharey=True, legend=False)
 
