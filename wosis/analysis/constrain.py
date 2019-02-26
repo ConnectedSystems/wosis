@@ -61,7 +61,7 @@ def _remove_match(corpora, strings, col_name, verbose=True):
     corpora_df = _ensure_df(corpora)
 
     for unrelated in strings:
-        matched = corpora_df.loc[corpora_df[col_name].str.contains(unrelated), :]
+        matched = corpora_df.loc[corpora_df[col_name].str.contains(unrelated, case=False), :]
         count_removed = matched['id'].count()
 
         if verbose:
@@ -331,8 +331,9 @@ def find_phrases(corpora, top_n=5, verbose=False, weighted_keywords=None):
             print(doc_title)
 
         if len(corpus) == 0:
-            print("    No abstract for {}, skipping...\n".format(doc_title))
-            return None
+            if verbose:
+                print("    No abstract for {}, skipping...\n".format(doc_title))
+            continue
 
         for idx, sent in enumerate(sent_tokenize_list):
             split_sent = sent.split(" ")
