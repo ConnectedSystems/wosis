@@ -267,6 +267,7 @@ def plot_pub_per_kw(kw_matches, corpora, kw_category, annotate=False):
     ==========
     * matplotlib figure object
     """
+    ind_recs, summary = kw_matches.recs, kw_matches.summary
     unique_titles = get_unique_kw_titles(ind_recs)
     num_titles = len(unique_titles)
     top_title = "Num. Publications per {} Keyword".format(kw_category.title())
