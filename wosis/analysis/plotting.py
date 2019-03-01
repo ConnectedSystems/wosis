@@ -159,7 +159,7 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
     See Also
     ==========
-    * wosis.analysis.search.search_records()
+    * wosis.analysis.search.find_keywords()
 
     Returns
     ==========

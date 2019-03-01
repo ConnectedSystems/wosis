@@ -132,7 +132,7 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
     criteria_matches = {}
     for criteria in list(keyword_criteria):
         criteria_kws = keyword_criteria[criteria]
-        search_results = search_records(
+        search_results = find_keywords(
             records, criteria_kws, threshold=threshold)
         kw_match = keyword_matches(search_results, criteria_kws, threshold)
 
