@@ -6,8 +6,19 @@ import pandas as pd
 
 from wosis.KeywordMatch import KeywordMatch
 
+import warnings
 
 def search_records(records, keywords, threshold=60.0):
+    """Deprecated function: Search records for a given set of keywords.
+
+    Use `find_keywords()` instead.
+    """
+    warnings.warn("Deprecated function! Use `find_keywords()` instead")
+    return find_keywords(records, keywords, threshold=60.0)
+# End search_records()
+
+
+def find_keywords(records, keywords, threshold=60.0):
     """Search records for a given set of keywords.
 
     Keywords will be transformed to lower case.
@@ -73,7 +84,7 @@ def search_records(records, keywords, threshold=60.0):
     matches.name = '{}'.format(keywords)
 
     return matches
-# End search_records()
+# End find_keywords()
 
 
 def keyword_matches(records, keywords, threshold=60.0):
