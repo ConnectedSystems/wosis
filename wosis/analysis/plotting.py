@@ -238,15 +238,25 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
 
 @plot_saver
-def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
+def plot_pub_per_kw(kw_matches, corpora, kw_category, annotate=False):
     """Plot publications per keyword.
 
     Parameters
     ==========
-    * ind_recs : dict, of keywords and matching publication records
-    * summary : dict, of keywords and matching number of publications
+    * kw_matches : KeywordMatch object
     * corpora : Metaknowledge Collection, representing corpora
     * kw_category : str, text indicating keyword category for use in plot title
+    * annotate : bool, display number of records in plot
+
+    Example
+    ==========
+    ```python
+    # where RC is some RecordCollection
+    keywords = set(["software practice", "software development", "software engineering", 
+                "best practice", "modeling practice"])
+    matches = wosis.keyword_matches(RC, keywords, 95.0)
+    wos_plot.plot_pub_per_kw(matches, RC, 'Practices')
+    ```
 
     See Also
     ==========
