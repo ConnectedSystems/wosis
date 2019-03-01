@@ -27,7 +27,7 @@ def plot_saver(func):
 
         if save_plot_fn:
             if save_plot_fn.endswith('.png'):
-                save_plot_fn = save_plot_fn.strip('.png')
+                save_plot_fn = save_plot_fn.replace('.png', '')
 
             fig.savefig(save_plot_fn + '.png', format='png', 
                         dpi=300, bbox_inches='tight')
