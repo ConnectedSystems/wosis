@@ -105,7 +105,7 @@ def keyword_matches(records, keywords, threshold=60.0):
 
     matching_records = {}
     for kw in keywords:
-        matching_records[kw] = search_records(records, set([kw, ]), threshold)
+        matching_records[kw] = find_keywords(records, set([kw, ]), threshold)
     # End for
 
     return KeywordMatch(matching_records)
