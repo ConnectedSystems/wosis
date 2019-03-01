@@ -79,14 +79,10 @@ def combine_manually_sorted(target, other):
     """
     assert hasattr(target, 'DOI'), "Both DataFrames have to include DOIs"
     assert hasattr(other, 'DOI'), "Both DataFrames have to include DOIs"
-
     assert hasattr(other, 'relevant'), "The DataFrame with data to be copied across has to have a 'relevant' column"
 
     result = target.copy()
-
-    result['relevant'] = target.merge(other, how='left', on=['DOI'])['relevant']
-    col_order = ['relevant'] + [col for col in result.columns if col != 'relevant']
-    result = result[col_order]
+    result.update(other)
 
     return result
 # End combine_manually_sorted()
