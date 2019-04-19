@@ -27,7 +27,7 @@ def plot_saver(func):
 
         if save_plot_fn:
             if save_plot_fn.endswith('.png'):
-                save_plot_fn = save_plot_fn.strip('.png')
+                save_plot_fn = save_plot_fn.replace('.png', '')
 
             fig.savefig(save_plot_fn + '.png', format='png', 
                         dpi=300, bbox_inches='tight')
@@ -159,7 +159,7 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
     See Also
     ==========
-    * wosis.analysis.search.search_records()
+    * wosis.analysis.search.find_keywords()
 
     Returns
     ==========
@@ -238,15 +238,25 @@ def plot_kw_trend(search_results, title=None, no_log_scale=False):
 
 
 @plot_saver
-def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
+def plot_pub_per_kw(kw_matches, corpora, kw_category, annotate=False):
     """Plot publications per keyword.
 
     Parameters
     ==========
-    * ind_recs : dict, of keywords and matching publication records
-    * summary : dict, of keywords and matching number of publications
+    * kw_matches : KeywordMatch object
     * corpora : Metaknowledge Collection, representing corpora
     * kw_category : str, text indicating keyword category for use in plot title
+    * annotate : bool, display number of records in plot
+
+    Example
+    ==========
+    ```python
+    # where RC is some RecordCollection
+    keywords = set(["software practice", "software development", "software engineering", 
+                "best practice", "modeling practice"])
+    matches = wosis.keyword_matches(RC, keywords, 95.0)
+    wos_plot.plot_pub_per_kw(matches, RC, 'Practices')
+    ```
 
     See Also
     ==========
@@ -257,6 +267,7 @@ def plot_pub_per_kw(ind_recs, summary, corpora, kw_category, annotate=False):
     ==========
     * matplotlib figure object
     """
+    ind_recs, summary = kw_matches.recs, kw_matches.summary
     unique_titles = get_unique_kw_titles(ind_recs)
     num_titles = len(unique_titles)
     top_title = "Num. Publications per {} Keyword".format(kw_category.title())
@@ -373,6 +384,9 @@ def plot_journal_pub_trend(search_results, title='Journal Publication Trend', to
     pubs_across_time = pubs_for_journals.loc[:, 'Num. Publications'].unstack()
     pubs_across_time = pubs_across_time.fillna(0.0).transpose()
     pubs_across_time = pubs_across_time.sort_index()
+
+    # Reorder based on total publications
+    pubs_across_time = pubs_across_time[top_n_journals.index]
 
     axes = pubs_across_time.plot(subplots=True, figsize=(
         12, 10), layout=(top_n, 1), sharey=True, legend=False)

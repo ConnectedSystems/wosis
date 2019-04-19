@@ -6,8 +6,19 @@ import pandas as pd
 
 from wosis.KeywordMatch import KeywordMatch
 
+import warnings
 
 def search_records(records, keywords, threshold=60.0):
+    """Deprecated function: Search records for a given set of keywords.
+
+    Use `find_keywords()` instead.
+    """
+    warnings.warn("Deprecated function! Use `find_keywords()` instead")
+    return find_keywords(records, keywords, threshold=60.0)
+# End search_records()
+
+
+def find_keywords(records, keywords, threshold=60.0):
     """Search records for a given set of keywords.
 
     Keywords will be transformed to lower case.
@@ -73,7 +84,7 @@ def search_records(records, keywords, threshold=60.0):
     matches.name = '{}'.format(keywords)
 
     return matches
-# End search_records()
+# End find_keywords()
 
 
 def keyword_matches(records, keywords, threshold=60.0):
@@ -89,9 +100,12 @@ def keyword_matches(records, keywords, threshold=60.0):
     ==========
     * dict, matching records by keyword
     """
+    if isinstance(keywords, str):
+        keywords = [keywords, ]
+
     matching_records = {}
     for kw in keywords:
-        matching_records[kw] = search_records(records, set([kw, ]), threshold)
+        matching_records[kw] = find_keywords(records, set([kw, ]), threshold)
     # End for
 
     return KeywordMatch(matching_records)
@@ -118,7 +132,7 @@ def keyword_matches_by_criteria(records, keyword_criteria, threshold=60.0):
     criteria_matches = {}
     for criteria in list(keyword_criteria):
         criteria_kws = keyword_criteria[criteria]
-        search_results = search_records(
+        search_results = find_keywords(
             records, criteria_kws, threshold=threshold)
         kw_match = keyword_matches(search_results, criteria_kws, threshold)
 
@@ -240,9 +254,43 @@ def find_pubs_by_title(records, titles):
         # titles is a string, convert to list
         titles = [titles]
 
+    titles = set(titles)
+
     new_rc = mk.RecordCollection()
     for rec in records:
-        if rec.title in titles:
+        curr_doi = rec.get('DI')
+        if rec.title in titles and not new_rc.containsID(curr_doi):
+            new_rc.add(rec)
+
+    if len(new_rc) == 0:
+        return None
+
+    return new_rc
+# End find_pubs_by_title()
+
+
+def find_pubs_by_doi(records, dois):
+    """Find publications by title.
+
+    Parameters
+    ==========
+    * records : Metaknowledge RecordCollection
+    * titles : list, of titles to search for (has to be exact match)
+
+    Returns
+    ==========
+    * Metaknowledge RecordCollection or None if no matches found
+    """
+    if hasattr(dois, 'lower'):
+        # titles is a string, convert to list
+        dois = [dois]
+
+    dois = set(dois)
+
+    new_rc = mk.RecordCollection()
+    for rec in records:
+        curr_doi = rec.get('DI')
+        if curr_doi in dois and not new_rc.containsID(curr_doi):
             new_rc.add(rec)
 
     if len(new_rc) == 0:
