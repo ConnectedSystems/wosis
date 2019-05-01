@@ -2,6 +2,9 @@ __all__ = ['calc_average_citations']
 
 def calc_average_citations(in_df, max_year=None, sort=False):
     """Calculate the average citations since year of publication.
+	
+	If no `max_year` is specified, calculate using the latest 
+	year in given dataset.
 
     Example
     ==========
