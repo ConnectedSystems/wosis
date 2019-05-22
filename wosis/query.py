@@ -418,23 +418,61 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 # End _get_referenced_works()
 
 
-def get_citing_works(wos_id, config):
+def get_citing_works(wos_id, config, batch_size=100, cache_as=None, overwrite=True):
     """Retrieve publications that cite a given paper
 
     Parameters
     ==========
-    * wos_id : str, Web of Science ID
+    * wos_id : str, Web of Science ID of publication to get data for
     * config : dict, config settings
+    * batch_size : int, number of records to retrieve in a single request
+    * cache_as : str, location of cache file to use
+    * overwrite : bool, overwrite cache file or not
 
     Returns
     ==========
     * Metaknowledge RecordCollection
     """
-    raise NotImplementedError("This method is not yet finished")
+    if cache_as:
+        file_list = glob(cache_as)
+        if file_list:
+            return mk.RecordCollection("{}.txt".format(cache_as))
+
     with wos.WosClient(user=config['user'], password=config['password']) as client:
-        pass
-        # client.
-    # End with
+
+        try:
+            # Using a count of 0 returns just the summary information
+            probe = client.citingArticles(wos_id, count=0)
+        except Exception as e:
+            _handle_webfault(client, e)
+            probe = client.citingArticles(wos_id, count=0)
+        # End try
+
+        recs = []
+        num_recs = probe.recordsFound
+
+        print("Found {} records".format(num_recs))
+
+        for batch in tqdm(range(1, num_recs, batch_size)):
+            try:
+                # Using a count of 0 returns just the summary information
+                probe = client.citingArticles(wos_id, count=batch_size, offset=batch)
+            except Exception as e:
+                _handle_webfault(client, e)
+                probe = client.citingArticles(wos_id, count=batch_size, offset=batch)
+            # End try
+
+            xml = _ensure_separation(probe.records)
+            recs.extend(wos_parser.read_xml_string(xml))
+
+    ris_info = wos_parser.rec_info_to_ris(recs)
+    ris_text = wos_parser.to_ris_text(ris_info)
+    wos_parser.write_file(
+        ris_text, cache_as, overwrite=overwrite)
+
+    RC = mk.RecordCollection("{}.txt".format(cache_as))
+
+    return RC
 # End get_citing_works()
 
 
