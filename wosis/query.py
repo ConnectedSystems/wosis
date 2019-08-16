@@ -151,6 +151,7 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp', skip_refs=F
     """
     hash_to_query = {}
     hash_to_col = {}
+    os.makedirs(tmp_dir, exist_ok=True)  # Create temp dir if necessary
     for query_str in queries:
         cache_fn = store.create_query_hash(query_str, time_span)
         hash_to_query.update({cache_fn: query_str})
