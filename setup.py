@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     setup(
@@ -11,7 +11,7 @@ if __name__ == "__main__":
         author='Takuya Iwanaga',
         author_email='iwanaga.takuya@anu.edu.au',
         license='(c) 2018 Takuya Iwanaga',
-        packages=['wosis'],
+        packages=find_packages(),
         install_requires=[
             'lxml',
             'pyyaml',
