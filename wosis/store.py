@@ -7,14 +7,37 @@ import json
 from os.path import join as pj
 from datetime import datetime
 
-__all__ = ['create_query_hash', 'export_ris_file', 'store_query_hash', 
-           'export_representative_file', 'combine_manually_sorted']
+import pickle
 
-def create_query_hash(query_str):
+__all__ = ['create_query_hash', 'export_ris_file', 'store_query_hash', 
+           'export_representative_file', 'combine_manually_sorted',
+           'write_cache', 'read_cache']
+
+def create_query_hash(query_str, time_span=None):
     hash_object = hashlib.md5(query_str.encode())
     md5_hash = hash_object.hexdigest()
+
+    if time_span:
+        md5_hash = "{}_{}-{}".format(md5_hash, time_span['begin'], time_span['end'])
+
     return md5_hash
 # End create_query_hash()
+
+
+def write_cache(recs, cache_file):
+    with open(cache_file, 'wb') as outfile:
+        pickle.dump(recs, outfile, pickle.HIGHEST_PROTOCOL)
+    # End with
+# End write_cache()
+
+
+def read_cache(cache_file):
+    with open(cache_file, 'rb') as infile:
+        recs = pickle.load(infile)
+    # End with
+
+    return recs
+# End read_cache()
 
 
 def export_ris_file(records, filename):

@@ -133,9 +133,9 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp', skip_refs=F
 
     Parameters
     ==========
-    * queries : WoS Client object
-    * overwrite : str, Web of Science Advanced Search query string
-    * config : int, number of records to request, between 1 and 100 inclusive.
+    * queries : list[str], list of Web of Science Advanced Search query string
+    * overwrite : bool, overwrite previous identical search if it exists.
+    * config : dict, Web of Science configuration
     * time_span : None or Dict,
                   begin - Beginning date for this search. Format: YYYY-MM-DD
                   end - Ending date for this search. Format: YYYY-MM-DD
@@ -152,39 +152,40 @@ def query(queries, overwrite, config, time_span=None, tmp_dir='tmp', skip_refs=F
     hash_to_query = {}
     hash_to_col = {}
     for query_str in queries:
-        with wos.WosClient(user=config['user'], password=config['password']) as client:
-            recs, xml_list = grab_records(
-                client, query_str, time_span=time_span, verbose=False, tmp_dir=tmp_dir)
-            if not skip_refs:
-                recs = grab_cited_works(
-                    client, query_str, recs, skip_refs=False, get_all_refs=True, tmp_dir=tmp_dir)
-        # End with
+        cache_fn = store.create_query_hash(query_str, time_span)
+        hash_to_query.update({cache_fn: query_str})
+        tmp_file = pj(tmp_dir, cache_fn)
 
-        num_ris_records = len(recs)
-        print("Got {} records".format(num_ris_records))
-
-        ris_info = wos_parser.rec_info_to_ris(recs)
-        ris_text = wos_parser.to_ris_text(ris_info)
-        wos_parser.write_file(
-            ris_text, pj('../tmp', 'test'), overwrite=True)
-
-        md5_hash = store.create_query_hash(query_str)
-        if time_span:
-            md5_hash = "{}_{}-{}".format(md5_hash, time_span['begin'], time_span['end'])
-        hash_to_query.update({md5_hash: query_str})
-        tmp_file = pj(tmp_dir, md5_hash)
-        prev_q_exists = os.path.isfile('{}.txt'.format(tmp_file))
+        ris_file = '{}_ris.txt'.format(tmp_file)
+        prev_q_exists = os.path.isfile(ris_file)
         if (prev_q_exists and overwrite) or not prev_q_exists:
-            ris_info = wos_parser.rec_info_to_ris(recs)
+
+            with wos.WosClient(user=config['user'], password=config['password']) as client:
+                recs, xml_list = grab_records(client, query_str, time_span=time_span, 
+                                              verbose=False)
+                if not skip_refs:
+                    recs = grab_cited_works(
+                        client, query_str, recs, skip_refs=False, get_all_refs=True)
+            # End with
+
+            num_ris_records = len(recs)
+            print("Got {} records".format(num_ris_records))
+
+            # store.write_cache(recs, ris_file)
+
+            if not isinstance(recs[0], dict):
+                ris_info = wos_parser.rec_info_to_ris(recs)
+            else:
+                ris_info = recs
+            # End if
+
             ris_text = wos_parser.to_ris_text(ris_info)
             wos_parser.write_file(
-                ris_text, tmp_file, overwrite=overwrite)
-        # else:
-        #     continue
-        # # End if
+                ris_text, ris_file, overwrite=overwrite, ext='')
+        # End if
 
-        RC = mk.RecordCollection("{}.txt".format(tmp_file))
-        hash_to_col[md5_hash] = RC
+        RC = mk.RecordCollection(ris_file)
+        hash_to_col[cache_fn] = RC
     # End for
 
     # dump out the query hash to file
@@ -200,9 +201,10 @@ def _ensure_separation(xml_string):
     xml_string = end_rec.sub("</REC>\n", xml_string)
     return xml_string
 
-def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
+def grab_records(client, query, batch_size=100, time_span=None,
                  verbose=False):
-    """
+    """Retrieves publication records in raw XML format. Use via `query()`.
+
     Parameters
     ==========
     * client : WoS Client object
@@ -217,65 +219,41 @@ def grab_records(client, query, batch_size=100, time_span=None, tmp_dir='tmp',
     ==========
     * tuple[list], list of parsed XML objects as string, list of XML
     """
-    # Cache results so as to not spam the Clarivate servers
-    md5_hash = store.create_query_hash(query)
+    recs = []
+    try:
+        probe = client.search(query, count=1, timeSpan=time_span)
+    except WebFault as e:
+        _handle_webfault(client, e)
+        probe = client.search(query, count=1, timeSpan=time_span)
+    # End try
 
-    os.makedirs(tmp_dir, exist_ok=True)
-    cache_file = '{}_{}-{}.dmp'.format(md5_hash, *time_span)
-    cache_file = os.path.join(tmp_dir, cache_file)
-    if not os.path.isfile(cache_file):
-        recs = []
+    q_id = probe.queryId
+    num_matches = probe.recordsFound
+    print("Found {} records".format(num_matches))
+
+    recs.extend(wos_parser.read_xml_string(probe.records))
+    del probe
+
+    # num_matches - `n` as the last loop gets the last `n` records
+    # (remember range is end exclusive, hence the -1)
+    leap = batch_size - 1
+    xml_list = []
+    for batch_start in tqdm(range(2, num_matches, batch_size)):
+        if verbose:
+            print('Getting {} to {}'.format(
+                batch_start, batch_start + leap))
 
         try:
-            probe = client.search(query, count=1, timeSpan=time_span)
+            resp = client.retrieve(q_id, batch_size, batch_start)
         except WebFault as e:
             _handle_webfault(client, e)
-            probe = client.search(query, count=1, timeSpan=time_span)
+            resp = client.retrieve(q_id, batch_size, batch_start)
         # End try
 
-        q_id = probe.queryId
-        num_matches = probe.recordsFound
-        print("Found {} records".format(num_matches))
-
-        recs.extend(wos_parser.read_xml_string(probe.records))
-        del probe
-
-        # num_matches - `n` as the last loop gets the last `n` records
-        # (remember range is end exclusive, hence the -1)
-        leap = batch_size - 1
-        xml_list = []
-        for batch_start in tqdm(range(2, num_matches, batch_size)):
-            if verbose:
-                print('Getting {} to {}'.format(
-                    batch_start, batch_start + leap))
-
-            try:
-                resp = client.retrieve(q_id, batch_size, batch_start)
-            except WebFault as e:
-                _handle_webfault(client, e)
-                resp = client.retrieve(q_id, batch_size, batch_start)
-            # End try
-
-            xml = _ensure_separation(resp.records)
-            recs.extend(wos_parser.read_xml_string(xml))
-            xml_list.append(xml)
-        # End for
-
-        with open(cache_file, 'wb') as outfile:
-            pickle.dump(xml_list, outfile, pickle.HIGHEST_PROTOCOL)
-        # End with
-    else:
-        with open(cache_file, 'rb') as infile:
-            xml_list = pickle.load(infile)
-        # End with
-
-        recs = []
-        for xml in xml_list:
-            # ensure elements are separated
-            xml = _ensure_separation(xml)
-            recs.extend(wos_parser.read_xml_string(xml))
-        # End for
-    # End if
+        xml = _ensure_separation(resp.records)
+        recs.extend(wos_parser.read_xml_string(xml))
+        xml_list.append(xml)
+    # End for
 
     return recs, xml_list
 # End grab_records()
@@ -300,9 +278,10 @@ def _extract_ref(c_rec, ref_order):
 # End _extract_ref()
 
 
-def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False,
-                     get_all_refs=False, tmp_dir='tmp'):
-    """
+def grab_cited_works(client, query_str, recs, time_span=None, batch_size=100, skip_refs=False,
+                     get_all_refs=False):
+    """Retrieves citations within publications in raw XML format. Used in `query()`.
+
     Parameters
     ==========
     * client : WoS Client
@@ -317,32 +296,14 @@ def grab_cited_works(client, query_str, recs, batch_size=100, skip_refs=False,
     ==========
     * list, of RIS records
     """
-    os.makedirs(tmp_dir, exist_ok=True)
-    md5_hash = store.create_query_hash(query_str)
-    cache_file = '{}_ris.dmp'.format(md5_hash)
-    cache_file = os.path.join(tmp_dir, cache_file)
-
-    if os.path.isfile(cache_file):
-        warnings.warn("Using cached referenced works...")
-        with open(cache_file, 'rb') as infile:
-            ris_records = pickle.load(infile)
-        # End with
-
-        return ris_records
-    # End if
-
     ris_records = wos_parser.rec_info_to_ris(recs)
     if not skip_refs:
-        warnings.warn("Getting referenced works...")
+        warnings.warn("Getting referenced works for {} publications...".format(len(recs)))
 
         ris_records = _get_referenced_works(
             client, ris_records, get_all_refs=get_all_refs)
     else:
         warnings.warn("Not getting referenced works")
-
-    with open(cache_file, 'wb') as outfile:
-        pickle.dump(ris_records, outfile, pickle.HIGHEST_PROTOCOL)
-    # End with
 
     return ris_records
 # End grab_cited_works()
@@ -418,23 +379,61 @@ def _get_referenced_works(client, ris_records, batch_size=100, get_all_refs=Fals
 # End _get_referenced_works()
 
 
-def get_citing_works(wos_id, config):
+def get_citing_works(wos_id, config, batch_size=100, cache_as=None, overwrite=True):
     """Retrieve publications that cite a given paper
 
     Parameters
     ==========
-    * wos_id : str, Web of Science ID
+    * wos_id : str, Web of Science ID of publication to get data for
     * config : dict, config settings
+    * batch_size : int, number of records to retrieve in a single request
+    * cache_as : str, location of cache file to use
+    * overwrite : bool, overwrite cache file or not
 
     Returns
     ==========
     * Metaknowledge RecordCollection
     """
-    raise NotImplementedError("This method is not yet finished")
+    if cache_as:
+        file_list = glob(cache_as)
+        if file_list:
+            return mk.RecordCollection("{}.txt".format(cache_as))
+
     with wos.WosClient(user=config['user'], password=config['password']) as client:
-        pass
-        # client.
-    # End with
+
+        try:
+            # Using a count of 0 returns just the summary information
+            probe = client.citingArticles(wos_id, count=0)
+        except Exception as e:
+            _handle_webfault(client, e)
+            probe = client.citingArticles(wos_id, count=0)
+        # End try
+
+        recs = []
+        num_recs = probe.recordsFound
+
+        print("Found {} records".format(num_recs))
+
+        for batch in tqdm(range(1, num_recs, batch_size)):
+            try:
+                # Using a count of 0 returns just the summary information
+                probe = client.citingArticles(wos_id, count=batch_size, offset=batch)
+            except Exception as e:
+                _handle_webfault(client, e)
+                probe = client.citingArticles(wos_id, count=batch_size, offset=batch)
+            # End try
+
+            xml = _ensure_separation(probe.records)
+            recs.extend(wos_parser.read_xml_string(xml))
+
+    ris_info = wos_parser.rec_info_to_ris(recs)
+    ris_text = wos_parser.to_ris_text(ris_info)
+    wos_parser.write_file(
+        ris_text, cache_as, overwrite=overwrite)
+
+    RC = mk.RecordCollection("{}.txt".format(cache_as))
+
+    return RC
 # End get_citing_works()
 
 
