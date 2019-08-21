@@ -342,8 +342,13 @@ def plot_pubs_per_journal(search_results, top_n=10, annotate=False, show_stats=T
         plot_title += "\n{} out of {} ({:.2f}%)".format(subtotal, len(
             search_results), (subtotal / len(search_results)) * 100.0)
 
-    ax = pubs_by_journal[0:top_n][::-
-                                  1].plot(kind='barh', fontsize=12, title=plot_title, figsize=(12, 6), color='blue')
+    ax = pubs_by_journal[0:top_n][::-1]\
+        .plot(kind='barh', 
+              fontsize=12, 
+              title=plot_title, 
+              figsize=(12, 6), 
+              color='#2b7bba'  # match seaborn blue
+            )
     ax.set_ylabel('')
 
     if annotate:
